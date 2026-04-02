@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id            String      @id @default(cuid())
+  digidIdClient Int         @unique
+  razonSocial   String
+  rfc           String
+  email         String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  signatories   Signatory[]
+  documents     Document[]
+}
+
+model Signatory {
+  id               String               @id @default(cuid())
+  companyId        String
+  company          Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  digidSignatoryId Int
+  name             String
+  email            String?
+  phone            String?
+  rfc              String?
+  isRepLegal       Boolean              @default(false)
+  autoSign         Boolean              @default(false)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  documentLinks    DocumentSignatory[]
+  placements       SignaturePlacement[]
+
+  @@unique([companyId, digidSignatoryId])
+}
+
+model Document {
+  id              String               @id @default(cuid())
+  companyId       String
+  company         Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  digidDocumentId Int                  @unique
+  nameDoc         String
+  urlDocumento    String?
+  status          String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  placements      SignaturePlacement[]
+  signatories     DocumentSignatory[]
+  certificates    Certificate[]
+}
+
+model DocumentSignatory {
+  id          String    @id @default(cuid())
+  documentId  String
+  document    Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  signatoryId String
+  signatory   Signatory @relation(fields: [signatoryId], references: [id], onDelete: Cascade)
+  kyc         Boolean   @default(false)
+
+  @@unique([documentId, signatoryId])
+}
+
+model SignaturePlacement {
+  id          String    @id @default(cuid())
+  documentId  String
+  document    Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  signatoryId String
+  signatory   Signatory @relation(fields: [signatoryId], references: [id], onDelete: Cascade)
+  page        Int
+  x           Float
+  y           Float
+  widthPx     Float
+  heightPx    Float
+  createdAt   DateTime  @default(now())
+}
+
+model WebhookEvent {
+  id         String   @id @default(cuid())
+  payload    String
+  receivedAt DateTime @default(now())
+  processed  Boolean  @default(false)
+}
+
+model Certificate {
+  id          String   @id @default(cuid())
+  documentId  String
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  fileName    String?
+  filePath    String?
+  mimeType    String   @default("application/pdf")
+  createdAt   DateTime @default(now())
+}

@@ -1,0 +1,11 @@
+---
+description: Juxa Sign + DIGID — documentación, idioma y seguridad
+alwaysApply: true
+---
+
+# Juxa Sign
+
+- Para integración DIGID (endpoints, credenciales, legacy vs Bearer), prioriza **`docs/api-digid.md`** como fuente de verdad; alinear `lib/digid.ts` y acciones de servidor con ese documento.
+- **UI y textos de producto:** español de México, tono claro y profesional, salvo que el producto defina otro idioma.
+- **Secretos:** `DIGID_*`, `DATABASE_URL` y webhooks solo en servidor (Server Actions, Route Handlers). No exponer tokens al cliente ni en `NEXT_PUBLIC_*`.
+- **Prisma:** modelos `Company`, `Signatory`, `Document`, etc. deben mantenerse alineados con los ids remotos DIGID (`digidIdClient`, `digidSignatoryId`, `digidDocumentId`).

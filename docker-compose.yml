@@ -1,0 +1,29 @@
+# PostgreSQL local para Juxa Sign
+# Uso: docker compose up -d
+# Luego: npm run db:push
+#
+# DATABASE_URL alineada con .env.example:
+# postgresql://juxa:juxa@localhost:5432/juxa_sign?schema=public
+#
+# Reset duro (borra datos): docker compose down -v
+# Luego: docker compose up -d && npm run db:push
+
+services:
+  db:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: juxa
+      POSTGRES_PASSWORD: juxa
+      POSTGRES_DB: juxa_sign
+    volumes:
+      - juxa_sign_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U juxa -d juxa_sign"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  juxa_sign_pg:
