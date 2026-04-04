@@ -2,8 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import {
+  dbCertificateCreate,
+  dbCompanyFindFirstInOrg,
+  dbDocumentFindFirstInOrgWithCompany,
+} from "@/lib/data/repository";
 import { certificarDocumento, registrarWebhook } from "@/lib/digid";
+import { gateMutation } from "@/lib/gate";
 import fs from "fs/promises";
 import path from "path";
 
@@ -17,9 +22,16 @@ export async function registerDigidWebhook(
   _prev: ConfigActionState | null,
   formData: FormData,
 ): Promise<ConfigActionState> {
+  const g = await gateMutation();
+  if (!g.ok) return { ok: false, message: g.message };
+  if (g.session.user.role === "USER") {
+    return { ok: false, message: "Tu cuenta no puede configurar webhooks." };
+  }
+  const orgId = g.session.user.organizationId;
+
   const parsed = webhookSchema.safeParse({ companyId: formData.get("companyId") });
   if (!parsed.success) return { ok: false, message: "Empresa inválida." };
-  const company = await prisma.company.findUnique({ where: { id: parsed.data.companyId } });
+  const company = await dbCompanyFindFirstInOrg(parsed.data.companyId, orgId);
   if (!company) return { ok: false, message: "Empresa no encontrada." };
 
   const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
@@ -29,10 +41,10 @@ export async function registerDigidWebhook(
   try {
     const res = await registrarWebhook({ IdClient: company.digidIdClient, Url: url });
     if (!res.success) {
-      return { ok: false, message: res.message ?? "DIGID rechazó el webhook." };
+      return { ok: false, message: res.message ?? "El proveedor rechazó el webhook." };
     }
     revalidatePath("/configuracion");
-    return { ok: true, message: "Webhook registrado en DIGID." };
+    return { ok: true, message: "Webhook registrado en el proveedor." };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Error";
     return { ok: false, message: msg };
@@ -40,10 +52,14 @@ export async function registerDigidWebhook(
 }
 
 export async function certifyStoredDocument(documentId: string): Promise<ConfigActionState> {
-  const doc = await prisma.document.findUnique({
-    where: { id: documentId },
-    include: { company: true },
-  });
+  const g = await gateMutation();
+  if (!g.ok) return { ok: false, message: g.message };
+  if (g.session.user.role === "USER") {
+    return { ok: false, message: "Tu cuenta no puede constancias desde esta acción." };
+  }
+  const orgId = g.session.user.organizationId;
+
+  const doc = await dbDocumentFindFirstInOrgWithCompany(documentId, orgId);
   if (!doc?.urlDocumento) {
     return { ok: false, message: "Documento sin URL para descargar." };
   }
@@ -78,7 +94,7 @@ export async function certifyStoredDocument(documentId: string): Promise<ConfigA
         ok: true,
         message:
           certMsg ??
-          "Certificación aceptada por DIGID (respuesta sin PDF; revisa el panel DIGID o el manual del endpoint 18).",
+          "Certificación aceptada por el proveedor (respuesta sin PDF; revisa el panel del proveedor o el manual del endpoint 18).",
       };
     }
 
@@ -88,13 +104,11 @@ export async function certifyStoredDocument(documentId: string): Promise<ConfigA
     const filePath = path.join(uploadDir, fileName);
     await fs.writeFile(filePath, Buffer.from(res.buffer));
 
-    await prisma.certificate.create({
-      data: {
-        documentId: doc.id,
-        fileName,
-        filePath,
-        mimeType: "application/pdf",
-      },
+    await dbCertificateCreate({
+      documentId: doc.id,
+      fileName,
+      filePath,
+      mimeType: "application/pdf",
     });
     revalidatePath(`/documentos/${doc.id}`);
     return { ok: true, message: "Constancia PDF guardada localmente." };

@@ -18,29 +18,44 @@ export default function NuevaEmpresaPage() {
 
   useEffect(() => {
     if (state?.message) {
-      if (state.ok) toast.success(state.message);
-      else toast.error(state.message);
+      if (state.ok) {
+        toast.success(state.message);
+        const id = state.companyId;
+        const q = new URLSearchParams({ registrado: "1" });
+        if (id) q.set("companyId", id);
+        // Navegación completa: evita lista de clientes cacheada en el segmento RSC tras router.push.
+        window.location.assign(`/documentos/nuevo?${q.toString()}`);
+      } else toast.error(state.message);
     }
   }, [state]);
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Nueva empresa</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Nuevo cliente</h1>
         <p className="text-muted-foreground">
-          Llama a DIGID <code className="text-xs">RegistrarEmpresa</code> y guarda el IdClient.
+          Registra en el proveedor una empresa o una persona física; guardamos el Id. de cliente para documentos y
+          firmantes.
         </p>
       </div>
       <Card>
         <CardHeader>
           <CardTitle>Datos del cliente</CardTitle>
-          <CardDescription>RFC y correo deben coincidir con lo que usarás en DIGID.</CardDescription>
+          <CardDescription>RFC y correo deben coincidir con lo que usarás en el proveedor.</CardDescription>
         </CardHeader>
         <CardContent>
           <form action={formAction} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="razonSocial">Razón social</Label>
-              <Input id="razonSocial" name="razonSocial" required placeholder="ACME SA de CV" />
+              <Label htmlFor="razonSocial">Razón social o nombre completo</Label>
+              <Input
+                id="razonSocial"
+                name="razonSocial"
+                required
+                placeholder="ACME SA de CV o Juan Pérez García"
+              />
+              <p className="text-xs text-muted-foreground">
+                Para persona física usa el nombre como debe figurar ante el proveedor; el RFC debe ser de persona física.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="rfc">RFC</Label>
@@ -52,7 +67,7 @@ export default function NuevaEmpresaPage() {
             </div>
             <div className="flex gap-2 pt-2">
               <Button type="submit" disabled={pending}>
-                {pending ? "Registrando…" : "Registrar en DIGID"}
+                {pending ? "Registrando…" : "Registrar en proveedor"}
               </Button>
               <Button type="button" variant="outline" asChild>
                 <Link href="/empresas">Cancelar</Link>

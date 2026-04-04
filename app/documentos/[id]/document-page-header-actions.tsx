@@ -6,9 +6,18 @@ import { refreshDocumentStatus } from "@/app/actions/document";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
-export function DocumentPageHeaderActions({ documentId }: { documentId: string }) {
+export function DocumentPageHeaderActions({
+  documentId,
+  canSync = true,
+}: {
+  documentId: string;
+  /** Rol VIEWER: sin sincronización con el proveedor. */
+  canSync?: boolean;
+}) {
   const router = useRouter();
   const [pending, start] = useTransition();
+
+  if (!canSync) return null;
 
   return (
     <Button
@@ -19,13 +28,13 @@ export function DocumentPageHeaderActions({ documentId }: { documentId: string }
         start(async () => {
           const r = await refreshDocumentStatus(documentId);
           if (r.ok) {
-            toast.success("Estado sincronizado con DIGID");
+            toast.success("Estado sincronizado con el proveedor");
             router.refresh();
           } else toast.error(r.message ?? "No se pudo sincronizar");
         })
       }
     >
-      {pending ? "Sincronizando…" : "Actualizar estado DIGID"}
+      {pending ? "Sincronizando…" : "Actualizar estado remoto"}
     </Button>
   );
 }

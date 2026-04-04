@@ -5,11 +5,14 @@ on:
   pull_request:
 
 jobs:
-  lint-and-build:
+  lint-build-e2e:
     runs-on: ubuntu-latest
     env:
-      # Solo para prisma generate / next build; la app no conecta a esta DB en build.
       DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=public
+      AUTH_SECRET: ci-build-and-e2e-secret-at-least-32-characters-long-x
+      NEXTAUTH_URL: http://127.0.0.1:3100
+      JUXA_DATA_STORE: memory
+      CI: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -22,3 +25,7 @@ jobs:
         run: npm run lint
       - name: Build
         run: npm run build
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium --with-deps
+      - name: Run Playwright E2E
+        run: npm run test:e2e

@@ -1,93 +1,111 @@
 "use client";
 
-import { Fragment, useEffect, useMemo } from "react";
-import { Worker, Viewer, type RenderPageProps } from "@react-pdf-viewer/core";
-import {
-  defaultLayoutPlugin,
-  type DefaultLayoutPluginProps,
-} from "@react-pdf-viewer/default-layout";
-import type { TransformToolbarSlot } from "@react-pdf-viewer/toolbar";
-import "@react-pdf-viewer/core/lib/styles/index.css";
-import "@react-pdf-viewer/default-layout/lib/styles/index.css";
+import { useCallback, useEffect, useRef, useState, type MouseEvent, type RefObject } from "react";
+import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist";
+import { cn } from "@/lib/utils";
+import type { PdfPickPayload } from "@/types/pdf-sign";
 
-const workerUrl = "https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
+export type { PdfPickPayload };
 
-export type PdfPickPayload = {
-  page: number;
-  x: number;
-  y: number;
-  widthPx: number;
-  heightPx: number;
-};
+function useContainerContentWidth(ref: RefObject<HTMLElement | null>) {
+  const [w, setW] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      setW(Math.max(0, Math.floor(r.width)));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref]);
+  return w;
+}
 
-/**
- * Capa de página con clic para coordenadas + markRendered exigido por @react-pdf-viewer/core
- * para que el visor marque la página como renderizada.
- */
-function PdfPageLayer({
-  pageProps,
+function PdfCanvasPage({
+  pdf,
+  pageNumber,
+  containerWidth,
   markMode,
   onPick,
 }: {
-  pageProps: RenderPageProps;
+  pdf: PDFDocumentProxy;
+  pageNumber: number;
+  containerWidth: number;
   markMode: boolean;
   onPick: (p: PdfPickPayload) => void;
 }) {
-  const {
-    pageIndex,
-    width,
-    height,
-    canvasLayerRendered,
-    textLayerRendered,
-    markRendered,
-    canvasLayer,
-    textLayer,
-    annotationLayer,
-  } = pageProps;
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (canvasLayerRendered && textLayerRendered) {
-      markRendered(pageIndex);
-    }
-  }, [canvasLayerRendered, textLayerRendered, markRendered, pageIndex]);
+    let cancelled = false;
+    let renderTask: RenderTask | null = null;
+
+    void (async () => {
+      try {
+        const page = await pdf.getPage(pageNumber);
+        if (cancelled) return;
+        const base = page.getViewport({ scale: 1 });
+        const scale = Math.max(0.1, containerWidth / base.width);
+        const viewport = page.getViewport({ scale });
+        const canvas = canvasRef.current;
+        if (!canvas || cancelled) return;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+        canvas.width = Math.floor(viewport.width * dpr);
+        canvas.height = Math.floor(viewport.height * dpr);
+        canvas.style.width = `${viewport.width}px`;
+        canvas.style.height = `${viewport.height}px`;
+
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.scale(dpr, dpr);
+
+        renderTask = page.render({ canvasContext: ctx, viewport });
+        await renderTask.promise;
+      } catch {
+        /* cancelado o error de render */
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      renderTask?.cancel();
+    };
+  }, [pdf, pageNumber, containerWidth]);
+
+  const handleClick = useCallback(
+    (e: MouseEvent<HTMLDivElement>) => {
+      if (!markMode) return;
+      const el = wrapRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      onPick({
+        page: pageNumber,
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+        widthPx: rect.width,
+        heightPx: rect.height,
+      });
+    },
+    [markMode, onPick, pageNumber],
+  );
 
   return (
     <div
-      className={markMode ? "cursor-crosshair" : ""}
-      style={{ position: "relative", width, height }}
-      onClick={(e) => {
-        if (!markMode) return;
-        const el = e.currentTarget;
-        const rect = el.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        onPick({
-          page: pageIndex + 1,
-          x,
-          y,
-          widthPx: rect.width,
-          heightPx: rect.height,
-        });
-      }}
+      ref={wrapRef}
+      className={cn("mx-auto w-fit py-2", markMode && "cursor-crosshair")}
+      onClick={handleClick}
     >
-      {canvasLayer.children}
-      {textLayer.children}
-      {annotationLayer.children}
+      <canvas ref={canvasRef} className="block rounded-sm bg-white shadow-sm dark:bg-white" />
     </div>
   );
 }
-
-const empty = () => <Fragment />;
-
-const noopToolbarSlot: TransformToolbarSlot = (slot) => ({
-  ...slot,
-  Zoom: empty,
-  ZoomIn: empty,
-  ZoomOut: empty,
-  Rotate: empty,
-  RotateBackwardMenuItem: empty,
-  RotateForwardMenuItem: empty,
-});
 
 export default function PdfSignViewer({
   fileUrl,
@@ -98,40 +116,115 @@ export default function PdfSignViewer({
   markMode: boolean;
   onPick: (p: PdfPickPayload) => void;
 }) {
-  /** Con marcas activas, se ocultan zoom y rotación para que x/y coincidan con AnchoPagina/altoPagina en API 8. */
-  const defaultLayoutPluginInstance = useMemo(() => {
-    let layout: ReturnType<typeof defaultLayoutPlugin>;
-    const props: DefaultLayoutPluginProps = markMode
-      ? {
-          toolbarPlugin: { zoomPlugin: { enableShortcuts: false } },
-          renderToolbar: (Toolbar) => (
-            <Toolbar>
-              {layout.toolbarPluginInstance.renderDefaultToolbar(noopToolbarSlot)}
-            </Toolbar>
-          ),
-        }
-      : {};
-    layout = defaultLayoutPlugin(props);
-    return layout;
-  }, [markMode]);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const outerWidth = useContainerContentWidth(scrollRef);
+  /** Si el contenedor aún mide 0 (layout), usar ancho razonable para no dejar el lienzo vacío. */
+  const innerWidth = Math.max(120, (outerWidth > 0 ? outerWidth : 640) - 24);
+  const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [numPages, setNumPages] = useState(0);
+  const loadingTaskRef = useRef<{ destroy: () => void } | null>(null);
 
-  const renderPage = (props: RenderPageProps) => (
-    <PdfPageLayer pageProps={props} markMode={markMode} onPick={onPick} />
-  );
+  useEffect(() => {
+    let cancelled = false;
+    setLoadError(null);
+    setPdf(null);
+    setNumPages(0);
+    loadingTaskRef.current = null;
+
+    void import("pdfjs-dist")
+      .then(async (pdfjs) => {
+        if (cancelled || typeof window === "undefined") return;
+
+        pdfjs.GlobalWorkerOptions.workerSrc = `${window.location.origin}/pdf.worker.min.js`;
+
+        const resolved =
+          fileUrl.startsWith("http://") || fileUrl.startsWith("https://")
+            ? fileUrl
+            : `${window.location.origin}${fileUrl.startsWith("/") ? fileUrl : `/${fileUrl}`}`;
+
+        const res = await fetch(resolved, { credentials: "same-origin", cache: "no-store" });
+        if (!res.ok) {
+          throw new Error(
+            res.status === 401
+              ? "No autorizado al obtener el PDF (sesión). Recarga la página o vuelve a entrar."
+              : `El servidor devolvió HTTP ${res.status} al pedir el PDF.`,
+          );
+        }
+        const buf = await res.arrayBuffer();
+        if (buf.byteLength < 8) {
+          throw new Error("La respuesta del PDF está vacía o es demasiado pequeña.");
+        }
+        const head = new Uint8Array(buf.slice(0, 5));
+        const sig = String.fromCharCode(...head);
+        if (sig !== "%PDF-") {
+          throw new Error(
+            "La respuesta no es un PDF (p. ej. HTML de error o login). Revisa sesión, token DIGID y la URL del documento.",
+          );
+        }
+
+        const loadingTask = pdfjs.getDocument({
+          data: new Uint8Array(buf),
+          useSystemFonts: true,
+        });
+        loadingTaskRef.current = loadingTask;
+        const doc = await loadingTask.promise;
+        if (cancelled) {
+          void doc.destroy();
+          return;
+        }
+        setPdf(doc);
+        setNumPages(doc.numPages);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setLoadError(err instanceof Error ? err.message : "No se pudo cargar el PDF.");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      void loadingTaskRef.current?.destroy();
+      loadingTaskRef.current = null;
+    };
+  }, [fileUrl]);
 
   return (
-    <Worker workerUrl={workerUrl}>
-      <div className="space-y-2">
-        {markMode ? (
-          <p className="text-sm text-muted-foreground">
-            Modo marca: zoom y rotación desactivados en la barra (escala fija respecto al clic). Coloca
-            las firmas con el PDF a tamaño por defecto.
-          </p>
+    <div className="space-y-2">
+      {markMode ? (
+        <p className="text-sm text-muted-foreground">
+          Modo marca: el PDF se ajusta al ancho del panel. Haz clic donde va la firma (coordenadas respecto a la página
+          tal como se muestra).
+        </p>
+      ) : null}
+      <div
+        ref={scrollRef}
+        className="flex h-[min(720px,75vh)] min-h-[200px] w-full min-w-0 flex-col overflow-auto rounded-lg border bg-muted/20 shadow-inner"
+      >
+        {loadError ? (
+          <p className="p-4 text-sm text-destructive">{loadError}</p>
         ) : null}
-        <div className="h-[min(720px,75vh)] overflow-hidden rounded-lg border bg-muted/20 shadow-inner">
-          <Viewer fileUrl={fileUrl} plugins={[defaultLayoutPluginInstance]} renderPage={renderPage} />
-        </div>
+        {!loadError && !pdf ? (
+          <p className="p-4 text-sm text-muted-foreground">Cargando PDF…</p>
+        ) : null}
+        {pdf && numPages > 0
+          ? Array.from({ length: numPages }, (_, i) => (
+              <PdfCanvasPage
+                key={`${fileUrl}-${i + 1}`}
+                pdf={pdf}
+                pageNumber={i + 1}
+                containerWidth={innerWidth}
+                markMode={markMode}
+                onPick={onPick}
+              />
+            ))
+          : null}
       </div>
-    </Worker>
+      {pdf && numPages > 0 ? (
+        <p className="text-center text-xs text-muted-foreground">
+          {numPages} página{numPages === 1 ? "" : "s"} · visor nativo (pdf.js)
+        </p>
+      ) : null}
+    </div>
   );
 }

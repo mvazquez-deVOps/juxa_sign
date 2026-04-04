@@ -1,6 +1,8 @@
 /**
  * Cliente DIGID — solo servidor. Ver docs/api-digid.md
  */
+import { isDigidMocked } from "@/lib/data/mode";
+import * as digidMock from "@/lib/digid-mock";
 
 const REQUIRED = [
   "DIGID_API_BASE",
@@ -14,7 +16,7 @@ const REQUIRED = [
 export function assertDigidEnv(): void {
   const missing = REQUIRED.filter((k) => !process.env[k]?.trim());
   if (missing.length) {
-    throw new Error(`Faltan variables de entorno DIGID: ${missing.join(", ")}`);
+    throw new Error(`Faltan variables de entorno del proveedor de firma: ${missing.join(", ")}`);
   }
 }
 
@@ -131,6 +133,43 @@ export type CreateDocData = {
   UrlDocumento?: string;
 };
 
+/** Extrae Id. documento y URL de respuestas create_doc/update_doc (variantes de mayúsculas / tipos). */
+export function parseCreateDocBearerPayload(raw: unknown): {
+  success: boolean;
+  message?: string;
+  idDocumento?: number;
+  urlDocumento?: string | null;
+} {
+  if (!raw || typeof raw !== "object") {
+    return { success: false, message: "Respuesta del proveedor inválida." };
+  }
+  const o = raw as Record<string, unknown>;
+  const success =
+    o.Success === true ||
+    o.success === true ||
+    o.Success === 1 ||
+    o.success === 1;
+  const msgCandidates = [o.Message, o.message, o.Error, o.error];
+  const message = msgCandidates.find((m): m is string => typeof m === "string" && m.length > 0);
+  const data = o.Data ?? o.data;
+  let idDocumento: number | undefined;
+  let urlDocumento: string | null | undefined;
+  const readIdAndUrl = (src: Record<string, unknown>) => {
+    const rawId = src.IdDocumento ?? src.idDocumento ?? src.IDDocumento;
+    if (typeof rawId === "number" && Number.isFinite(rawId)) idDocumento = rawId;
+    else if (typeof rawId === "string") {
+      const n = parseInt(rawId, 10);
+      if (!Number.isNaN(n)) idDocumento = n;
+    }
+    const u = src.UrlDocumento ?? src.urlDocumento ?? src.URLDocumento;
+    if (typeof u === "string") urlDocumento = u;
+    else if (u == null) urlDocumento = null;
+  };
+  if (data && typeof data === "object") readIdAndUrl(data as Record<string, unknown>);
+  if (idDocumento == null) readIdAndUrl(o);
+  return { success, message, idDocumento, urlDocumento };
+}
+
 export type SignatureCoordinate = {
   x: number;
   y: number;
@@ -155,6 +194,7 @@ export type RegistrarEmpresaInput = {
 export async function registrarEmpresa(
   input: RegistrarEmpresaInput,
 ): Promise<LegacyRegistrarResponse> {
+  if (isDigidMocked()) return digidMock.mockRegistrarEmpresa(input);
   const res = await digidPostLegacy("RegistrarEmpresa", input);
   return res.json() as Promise<LegacyRegistrarResponse>;
 }
@@ -175,6 +215,7 @@ export type CrearFirmanteInput = {
 export async function guardarFirmante(
   input: CrearFirmanteInput,
 ): Promise<BearerSuccessData<SaveSignatoryData>> {
+  if (isDigidMocked()) return digidMock.mockGuardarFirmante(input);
   const res = await digidFetchBearer("signatory/save_signatory", {
     method: "POST",
     body: JSON.stringify(input),
@@ -187,11 +228,41 @@ export async function guardarFirmante(
 export async function crearDocumentoMultipart(form: FormData): Promise<
   BearerSuccessData<CreateDocData>
 > {
+  if (isDigidMocked()) return digidMock.mockCrearDocumentoMultipart(form);
   const res = await digidFetchBearer("create_doc", {
     method: "POST",
     body: form,
   });
-  return res.json() as Promise<BearerSuccessData<CreateDocData>>;
+  const text = await res.text();
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text) as unknown;
+  } catch {
+    return {
+      Success: false,
+      Message: `create_doc: HTTP ${res.status} — respuesta no es JSON (${text.slice(0, 200)}${text.length > 200 ? "…" : ""})`,
+    };
+  }
+  const p = parseCreateDocBearerPayload(raw);
+  if (!p.success) {
+    return {
+      Success: false,
+      Message: p.message ?? (!res.ok ? `HTTP ${res.status}` : "El proveedor rechazó la creación del documento."),
+    };
+  }
+  if (p.idDocumento == null) {
+    return {
+      Success: false,
+      Message: p.message ?? "El proveedor no devolvió IdDocumento.",
+    };
+  }
+  return {
+    Success: true,
+    Data: {
+      IdDocumento: p.idDocumento,
+      UrlDocumento: p.urlDocumento ?? undefined,
+    },
+  };
 }
 
 // --- 4 Actualizar documento ---
@@ -213,6 +284,7 @@ export async function asignarFirmantesDocumento(body: {
   IdDocument: number;
   signatories: { id: number; kyc: boolean }[];
 }): Promise<{ success: boolean; message?: string }> {
+  if (isDigidMocked()) return digidMock.mockAsignarFirmantesDocumento(body);
   const payload = {
     IdClient: body.IdClient,
     IdDocument: body.IdDocument,
@@ -247,6 +319,7 @@ export async function obtenerUrlFirmaDocumento(body: {
   IdCliente: number;
   IdDocumento: number;
 }): Promise<LegacyRegistrarResponse> {
+  if (isDigidMocked()) return digidMock.mockObtenerUrlFirmaDocumento(body);
   const res = await digidPostLegacy("dURLFirmaDoc", body);
   return res.json() as Promise<LegacyRegistrarResponse>;
 }
@@ -270,6 +343,7 @@ export type EnviarFirmarInput = {
 export async function enviarAFirmar(
   input: EnviarFirmarInput,
 ): Promise<{ Success: boolean; Message?: string }> {
+  if (isDigidMocked()) return digidMock.mockEnviarAFirmar(input);
   const { FolioPremium, ObserverAprove, ...rest } = input;
   const body: Record<string, unknown> = {
     ...rest,
@@ -293,6 +367,7 @@ export async function infoDocumento(body: {
   IdCliente: number;
   IdDocumento: number;
 }): Promise<LegacyRegistrarResponse> {
+  if (isDigidMocked()) return digidMock.mockInfoDocumento(body);
   const res = await digidPostLegacy("dInfoDocto", body);
   return res.json() as Promise<LegacyRegistrarResponse>;
 }
@@ -314,6 +389,7 @@ export async function urlFirmaFirmante(body: {
   IdDocumento: number;
   IdFirmante: number;
 }): Promise<LegacyRegistrarResponse> {
+  if (isDigidMocked()) return digidMock.mockUrlFirmaFirmante(body);
   const res = await digidPostLegacy("dObtenerURLFirmante", body);
   return res.json() as Promise<LegacyRegistrarResponse>;
 }
@@ -325,6 +401,7 @@ export async function reenviarDocumento(body: {
   IdDocumento: number;
   IdFirmante: number;
 }): Promise<LegacyRegistrarResponse> {
+  if (isDigidMocked()) return digidMock.mockReenviarDocumento();
   const res = await digidPostLegacy("dReEnviarDocumento", body);
   return res.json() as Promise<LegacyRegistrarResponse>;
 }
@@ -335,6 +412,7 @@ export async function registrarWebhook(body: {
   IdClient: number;
   Url: string;
 }): Promise<{ success: boolean; message?: string }> {
+  if (isDigidMocked()) return digidMock.mockRegistrarWebhook(body);
   const res = await digidFetchBearer("add_webhook", {
     method: "POST",
     body: JSON.stringify(body),
@@ -369,6 +447,7 @@ export type CertificarDocumentoResult =
  * DIGID puede responder JSON o PDF según ambiente. Se lee el cuerpo una sola vez.
  */
 export async function certificarDocumento(form: FormData): Promise<CertificarDocumentoResult> {
+  if (isDigidMocked()) return digidMock.mockCertificarDocumento(form);
   const res = await digidFetchBearer("certify_doc", {
     method: "POST",
     body: form,

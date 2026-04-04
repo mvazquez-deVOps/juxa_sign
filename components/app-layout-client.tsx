@@ -1,14 +1,72 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { cn } from "@/lib/utils";
+import type { SessionUserChip } from "@/components/sidebar-session";
 import { Providers } from "@/components/providers";
 
-export function AppLayoutClient({ children }: { children: React.ReactNode }) {
+export function AppLayoutClient({
+  children,
+  demoLogout,
+  sessionUser,
+  showAdminNav,
+  showSuperAdminNav,
+  consumerFolioNav,
+  panelReadOnlyNav,
+  memoryDataStore,
+  memoryDevSubtitle,
+  trialBanner,
+}: {
+  children: React.ReactNode;
+  demoLogout?: boolean;
+  sessionUser?: SessionUserChip | null;
+  showAdminNav?: boolean;
+  showSuperAdminNav?: boolean;
+  /** Rol USER: navegación reducida + folios. */
+  consumerFolioNav?: boolean;
+  /** Rol VIEWER: solo visualización (consulta + planes; sin configuración ni lotes). */
+  panelReadOnlyNav?: boolean;
+  /** Desde el servidor: JUXA_DATA_STORE no existe en el cliente. */
+  memoryDataStore: boolean;
+  /** Subtítulo técnico “modo memoria” solo para rol SANDBOX. */
+  memoryDevSubtitle?: boolean;
+  trialBanner?: ReactNode;
+}) {
   const pathname = usePathname() ?? "/";
+  const bare =
+    pathname === "/login" ||
+    pathname.startsWith("/login/") ||
+    pathname.startsWith("/invitacion/") ||
+    pathname === "/registro" ||
+    pathname.startsWith("/registro/");
+  const juxaPublicBg =
+    pathname === "/login" ||
+    pathname.startsWith("/login/") ||
+    pathname.startsWith("/invitacion") ||
+    pathname === "/registro" ||
+    pathname.startsWith("/registro/");
   return (
     <Providers>
-      <AppShell pathname={pathname}>{children}</AppShell>
+      {bare ? (
+        <div className={cn("min-h-screen", juxaPublicBg ? "bg-black" : "bg-background")}>{children}</div>
+      ) : (
+        <AppShell
+          pathname={pathname}
+          demoLogout={demoLogout}
+          sessionUser={sessionUser ?? null}
+          showAdminNav={showAdminNav}
+          showSuperAdminNav={showSuperAdminNav}
+          consumerFolioNav={consumerFolioNav}
+          panelReadOnlyNav={panelReadOnlyNav}
+          memoryDataStore={memoryDataStore}
+          memoryDevSubtitle={memoryDevSubtitle}
+          trialBanner={trialBanner}
+        >
+          {children}
+        </AppShell>
+      )}
     </Providers>
   );
 }

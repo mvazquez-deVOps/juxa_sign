@@ -2,8 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import {
+  dbCompanyFindFirstInOrg,
+  dbSignatoryDelete,
+  dbSignatoryFindFirstInOrg,
+  dbSignatoryUpsert,
+} from "@/lib/data/repository";
 import { guardarFirmante } from "@/lib/digid";
+import { gateOrgStructureMutation } from "@/lib/gate";
 
 const createSchema = z.object({
   companyId: z.string().cuid(),
@@ -21,6 +27,10 @@ export async function saveSignatory(
   _prev: SignatoryActionState | null,
   formData: FormData,
 ): Promise<SignatoryActionState> {
+  const g = await gateOrgStructureMutation();
+  if (!g.ok) return { ok: false, message: g.message };
+  const orgId = g.session.user.organizationId;
+
   const parsed = createSchema.safeParse({
     companyId: formData.get("companyId"),
     name: formData.get("name"),
@@ -38,7 +48,7 @@ export async function saveSignatory(
   if (!email && !phone) {
     return { ok: false, message: "Debes indicar correo o teléfono." };
   }
-  const company = await prisma.company.findUnique({ where: { id: parsed.data.companyId } });
+  const company = await dbCompanyFindFirstInOrg(parsed.data.companyId, orgId);
   if (!company) return { ok: false, message: "Empresa no encontrada." };
 
   const signatoryId = formData.get("signatoryId")?.toString();
@@ -56,34 +66,16 @@ export async function saveSignatory(
   try {
     const res = await guardarFirmante(payload);
     if (!res.Success || !res.Data?.id) {
-      return { ok: false, message: res.Message ?? "DIGID rechazó la petición." };
+      return { ok: false, message: res.Message ?? "El proveedor rechazó la petición." };
     }
     const digidSignatoryId = res.Data.id;
-    await prisma.signatory.upsert({
-      where: {
-        companyId_digidSignatoryId: {
-          companyId: company.id,
-          digidSignatoryId,
-        },
-      },
-      create: {
-        companyId: company.id,
-        digidSignatoryId,
-        name: parsed.data.name,
-        email: email ?? null,
-        phone: phone ?? null,
-        rfc: parsed.data.rfc?.trim() || null,
-        isRepLegal: parsed.data.isRepLegal === "on",
-        autoSign: parsed.data.autoSign === "on",
-      },
-      update: {
-        name: parsed.data.name,
-        email: email ?? null,
-        phone: phone ?? null,
-        rfc: parsed.data.rfc?.trim() || null,
-        isRepLegal: parsed.data.isRepLegal === "on",
-        autoSign: parsed.data.autoSign === "on",
-      },
+    await dbSignatoryUpsert(company.id, digidSignatoryId, {
+      name: parsed.data.name,
+      email: email ?? null,
+      phone: phone ?? null,
+      rfc: parsed.data.rfc?.trim() || null,
+      isRepLegal: parsed.data.isRepLegal === "on",
+      autoSign: parsed.data.autoSign === "on",
     });
     revalidatePath("/firmantes");
     return { ok: true, message: "Firmante guardado." };
@@ -94,6 +86,11 @@ export async function saveSignatory(
 }
 
 export async function deleteSignatoryLocal(id: string) {
-  await prisma.signatory.delete({ where: { id } }).catch(() => null);
+  const g = await gateOrgStructureMutation();
+  if (!g.ok) return;
+  const orgId = g.session.user.organizationId;
+  const sig = await dbSignatoryFindFirstInOrg(id, orgId);
+  if (!sig) return;
+  await dbSignatoryDelete(sig.id);
   revalidatePath("/firmantes");
 }

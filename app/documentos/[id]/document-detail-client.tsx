@@ -1,8 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { addPlacement, clearPlacements, refreshDocumentStatus } from "@/app/actions/document";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import type { PdfPickPayload } from "@/components/pdf-sign-viewer";
+import type { PdfPickPayload } from "@/types/pdf-sign";
 
 const PdfSignViewer = dynamic(() => import("@/components/pdf-sign-viewer"), {
   ssr: false,
@@ -24,12 +25,20 @@ const PdfSignViewer = dynamic(() => import("@/components/pdf-sign-viewer"), {
 });
 
 export function DocumentDetailClient({
+  canMutate: allowWrite,
+  canSyncRemote,
   documentId,
+  companyId,
+  companyRazonSocial,
   fileUrl,
   signatories,
   placements,
 }: {
+  canMutate: boolean;
+  canSyncRemote: boolean;
   documentId: string;
+  companyId: string;
+  companyRazonSocial: string;
   fileUrl: string | null;
   signatories: { id: string; name: string; digidId: number }[];
   placements: {
@@ -47,7 +56,21 @@ export function DocumentDetailClient({
   const [signatoryId, setSignatoryId] = useState(signatories[0]?.id ?? "");
   const [pending, startTransition] = useTransition();
 
+  useEffect(() => {
+    setSignatoryId((prev) => {
+      if (signatories.length === 0) return "";
+      if (prev && signatories.some((s) => s.id === prev)) return prev;
+      return signatories[0]!.id;
+    });
+  }, [signatories]);
+
   const onPick = (p: PdfPickPayload) => {
+    if (!allowWrite) {
+      toast.error(
+        "Tu perfil es visor · potencial consumidor: no puedes colocar marcas aquí. Pide a un administrador rol operativo o de consumo de folios.",
+      );
+      return;
+    }
     if (!signatoryId) {
       toast.error("Selecciona un firmante.");
       return;
@@ -76,24 +99,30 @@ export function DocumentDetailClient({
           <div>
             <CardTitle>Visor PDF</CardTitle>
             <CardDescription>
-              Activa “Marcar firma”, elige firmante y haz clic donde va la firma. Usa{" "}
-              <strong>zoom 100%</strong> en la barra del visor antes de marcar; si cambias el zoom, las coordenadas
-              pueden desalinearse respecto a lo que espera DIGID.
+              Activa “Marcar firma”, elige firmante y haz clic donde va la firma. El PDF se muestra ajustado al ancho
+              del panel; las coordenadas se toman sobre esa vista (no hay zoom manual en el visor).
             </CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant={markMode ? "default" : "outline"} size="sm" onClick={() => setMarkMode((m) => !m)}>
+            <Button
+              variant={markMode ? "default" : "outline"}
+              size="sm"
+              disabled={!allowWrite}
+              onClick={() => allowWrite && setMarkMode((m) => !m)}
+            >
               {markMode ? "Modo marcar: ON" : "Modo marcar: OFF"}
             </Button>
             <Button
               variant="outline"
               size="sm"
-              disabled={pending}
+              disabled={!canSyncRemote || pending}
               onClick={() =>
                 startTransition(async () => {
-                  await refreshDocumentStatus(documentId);
-                  toast.success("Estado actualizado");
-                  router.refresh();
+                  const r = await refreshDocumentStatus(documentId);
+                  if (r.ok) {
+                    toast.success("Estado actualizado");
+                    router.refresh();
+                  } else toast.error(r.message ?? "No se pudo sincronizar");
                 })
               }
             >
@@ -107,13 +136,12 @@ export function DocumentDetailClient({
               role="status"
               className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100"
             >
-              <strong>Importante:</strong> en la barra del visor, deja el zoom en{" "}
-              <strong>100%</strong> antes de colocar marcas. Si cambias el zoom después, las
-              coordenadas pueden no coincidir con lo que espera DIGID.
+              <strong>Importante:</strong> coloca las marcas con el PDF tal como se ve en pantalla (ajustado al ancho
+              del panel). Si redimensionas mucho la ventana, revisa las marcas antes de enviar a firmar.
             </div>
           ) : null}
           {!fileUrl ? (
-            <p className="text-muted-foreground">Este documento no tiene URL de archivo en DIGID.</p>
+            <p className="text-muted-foreground">Este documento no tiene URL de archivo en el proveedor.</p>
           ) : (
             <PdfSignViewer fileUrl={fileUrl} markMode={markMode} onPick={onPick} />
           )}
@@ -128,18 +156,33 @@ export function DocumentDetailClient({
           </CardHeader>
           <CardContent className="space-y-3">
             <Label>Selección</Label>
-            <Select value={signatoryId} onValueChange={setSignatoryId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Firmante" />
-              </SelectTrigger>
-              <SelectContent>
-                {signatories.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name} ({s.digidId})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {signatories.length === 0 ? (
+              <div className="space-y-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-3 text-sm text-amber-950 dark:text-amber-100">
+                <p>
+                  No hay firmantes registrados para <strong className="text-foreground">{companyRazonSocial}</strong>.
+                  Las marcas de firma se asocian a un firmante de ese cliente.
+                </p>
+                <Button variant="secondary" size="sm" asChild>
+                  <Link href={`/firmantes?companyId=${encodeURIComponent(companyId)}`}>Ir a Firmantes</Link>
+                </Button>
+              </div>
+            ) : (
+              <Select
+                value={signatoryId || undefined}
+                onValueChange={setSignatoryId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Elige firmante" />
+                </SelectTrigger>
+                <SelectContent>
+                  {signatories.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name} ({s.digidId})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </CardContent>
         </Card>
 
@@ -149,7 +192,7 @@ export function DocumentDetailClient({
             <Button
               variant="destructive"
               size="sm"
-              disabled={pending || placements.length === 0}
+              disabled={!allowWrite || pending || placements.length === 0}
               onClick={() =>
                 startTransition(async () => {
                   await clearPlacements(documentId);

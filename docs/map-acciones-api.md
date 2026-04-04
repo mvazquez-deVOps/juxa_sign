@@ -15,6 +15,9 @@ Referencia rápida entre acciones del panel y llamadas DIGID. Detalle de payload
 | `getLayoutSignerUrl` | Legacy `dURLFirmaDoc` | Pantalla general |
 | `registerDigidWebhook` | Bearer `add_webhook` | URL pública + opcional `?secret=` |
 | `certifyStoredDocument` | Bearer `certify_doc` | Descarga PDF con Bearer si aplica |
-| Webhook entrante | — | `POST /api/webhooks/digid` |
+| Webhook entrante | — | `POST /api/webhooks/digid` · idempotencia 7 días por hash de cuerpo + cabecera delivery; parse tolerante en `lib/webhook-parse.ts` |
+| Health / smoke | — | `GET` o `HEAD` `/api/health` (sin DB; ver [despliegue.md](./despliegue.md)) |
+| Acceso demo | — | `POST /api/demo-auth` (cookie `juxa_demo_session`), `POST /api/demo-auth/logout` |
+| Sesión en servidor | — | `resolveSession()` en `lib/session.ts` (NextAuth o sesión demo + `DEMO_ORGANIZATION_ID`) usada por `gateMutation` y páginas vía `requireOrgContext` |
 
 Cancelaciones u otras APIs legacy no expuestas aún en el panel pueden añadirse siguiendo el mismo patrón en `lib/digid.ts`.

@@ -3,50 +3,53 @@
 @tailwind utilities;
 
 @layer base {
+  /*
+   * JUXA Sign — identidad: azul (#1d4ed8) en acciones primarias, teal (#2ABDA8) en acentos y foco.
+   * Tema oscuro alineado con marketing; claro minimal para quien cambie el toggle.
+   */
   :root {
-    --background: 210 20% 98%;
-    --foreground: 222 47% 11%;
+    --background: 210 25% 98%;
+    --foreground: 222 47% 9%;
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 222 47% 9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    /* Juxa Sign: acento teal profundo */
-    --primary: 173 58% 32%;
+    --popover-foreground: 222 47% 9%;
+    --primary: 221 83% 48%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 25% 93%;
+    --secondary: 210 22% 93%;
     --secondary-foreground: 222 47% 11%;
     --muted: 210 20% 94%;
-    --muted-foreground: 215 16% 40%;
-    --accent: 173 45% 92%;
-    --accent-foreground: 173 58% 22%;
+    --muted-foreground: 215 16% 38%;
+    --accent: 171 45% 93%;
+    --accent-foreground: 171 58% 22%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214 20% 88%;
-    --input: 214 20% 88%;
-    --ring: 173 58% 32%;
+    --border: 214 18% 88%;
+    --input: 214 18% 88%;
+    --ring: 171 61% 42%;
     --radius: 0.65rem;
   }
 
   .dark {
-    --background: 222 47% 8%;
-    --foreground: 210 30% 96%;
-    --card: 222 40% 11%;
-    --card-foreground: 210 30% 96%;
-    --popover: 222 40% 11%;
-    --popover-foreground: 210 30% 96%;
-    --primary: 173 50% 45%;
-    --primary-foreground: 222 47% 8%;
-    --secondary: 217 25% 18%;
-    --secondary-foreground: 210 30% 96%;
-    --muted: 217 25% 18%;
-    --muted-foreground: 215 15% 65%;
-    --accent: 173 35% 18%;
-    --accent-foreground: 173 50% 75%;
-    --destructive: 0 62% 45%;
+    --background: 0 0% 3%;
+    --foreground: 210 25% 96%;
+    --card: 0 0% 6%;
+    --card-foreground: 210 25% 96%;
+    --popover: 0 0% 6%;
+    --popover-foreground: 210 25% 96%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 11%;
+    --secondary-foreground: 210 25% 96%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 215 14% 58%;
+    --accent: 171 35% 12%;
+    --accent-foreground: 171 55% 72%;
+    --destructive: 0 62% 48%;
     --destructive-foreground: 0 0% 100%;
-    --border: 217 25% 18%;
-    --input: 217 25% 18%;
-    --ring: 173 50% 45%;
+    --border: 0 0% 14%;
+    --input: 0 0% 14%;
+    --ring: 171 58% 45%;
   }
 }
 

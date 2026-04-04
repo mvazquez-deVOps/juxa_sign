@@ -26,6 +26,8 @@ DIGID debe invocar una URL **pública** HTTPS (o la que acepte el sandbox).
 4. En **Configuración**, registra el webhook para el `IdClient` deseado (`add_webhook`).
 5. Si usas `DIGID_WEBHOOK_SECRET`, la URL incluirá `?secret=...`; debe coincidir con lo que valida [`app/api/webhooks/digid/route.ts`](../app/api/webhooks/digid/route.ts).
 6. Dispara un evento en DIGID y revisa logs del servidor o la tabla `WebhookEvent` si está activa la persistencia.
+7. **Idempotencia:** el mismo cuerpo (y la misma cabecera `X-Digid-Delivery-Id` o `X-Request-Id` si DIGID la envía) en **7 días** devuelve `{ duplicate: true }` sin insertar otro registro ni volver a actualizar el documento.
+8. En **producción**, la tabla de eventos en Configuración está oculta; para verla define `JUXA_WEBHOOK_DEBUG_UI=1` en el servidor.
 
 Sin túnel, el estado del documento solo se actualizará con **“Sincronizar estado”** o el sync masivo en envíos.
 
@@ -33,6 +35,12 @@ Sin túnel, el estado del documento solo se actualizará con **“Sincronizar es
 
 - Revisa el bloque **“Detalle del error”** bajo el formulario en el panel (texto completo del servidor).
 - Activa logs de red en el servidor o añade temporalmente trazas en `lib/digid.ts` **sin** registrar tokens.
+
+## Acceso al panel (login)
+
+- **Demo** (`DEMO_PASSWORD`): si el panel carga pero las acciones fallan, falta `DEMO_ORGANIZATION_ID` (cuid de `Organization` en Postgres) o no coincide con tus datos. `npm run check:env` lo valida junto a `DEMO_AUTH_SECRET`.
+- **NextAuth** (sin `DEMO_PASSWORD`): sin `AUTH_SECRET` las sesiones no persisten; el usuario debe existir en la BD (`npm run db:seed` puede crear admin).
+- Tras cambiar `.env`, reinicia el proceso de Next.
 
 ## Base de datos
 

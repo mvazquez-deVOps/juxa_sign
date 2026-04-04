@@ -1,38 +1,52 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import {
+  dbCompaniesFindManyByRazon,
+  dbEnsureDefaultDemoClientIfEmpty,
+  dbSignatoryFindManyByCompany,
+} from "@/lib/data/repository";
+import { Button } from "@/components/ui/button";
+import { canMutate } from "@/lib/gate";
+import { requireOrgContext } from "@/lib/org-scope";
 import { FirmantesClient } from "./ui";
 
 type Props = { searchParams: Promise<{ companyId?: string }> };
 
 export default async function FirmantesPage({ searchParams }: Props) {
+  const { organizationId, role } = await requireOrgContext();
+  const allowWrite = canMutate(role);
   const { companyId } = await searchParams;
-  const companies = await prisma.company.findMany({ orderBy: { razonSocial: "asc" } });
+  await dbEnsureDefaultDemoClientIfEmpty(organizationId);
+  const companies = await dbCompaniesFindManyByRazon(organizationId, "asc");
   const selectedId = companyId && companies.some((c) => c.id === companyId) ? companyId : companies[0]?.id;
 
-  const signatories = selectedId
-    ? await prisma.signatory.findMany({
-        where: { companyId: selectedId },
-        orderBy: { name: "asc" },
-      })
-    : [];
+  const signatories = selectedId ? await dbSignatoryFindManyByCompany(selectedId) : [];
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Firmantes</h1>
         <p className="text-muted-foreground">
-          Sincroniza con DIGID <code className="text-xs">save_signatory</code>. Requiere correo o teléfono.
+          Alta y edición de firmantes por cliente (empresa o persona física). Indica al menos correo o teléfono.
         </p>
       </div>
       {companies.length === 0 ? (
-        <div className="rounded-xl border bg-card p-8 text-center text-muted-foreground">
-          Primero registra una empresa.{" "}
-          <Link href="/empresas/nueva" className="text-primary underline">
-            Nueva empresa
-          </Link>
+        <div className="mx-auto max-w-md space-y-4 rounded-xl border bg-card p-8 text-center">
+          <p className="text-sm text-muted-foreground">
+            El orden del panel es: <strong className="text-foreground">Clientes</strong> (alta en DIGID) →{" "}
+            <strong className="text-foreground">Firmantes</strong> → Documentos. Aquí aún no hay clientes en tu
+            organización.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Si ya diste de alta uno, revisa <Link href="/empresas" className="text-primary underline">Clientes</Link> y
+            recarga esta página.
+          </p>
+          <Button asChild>
+            <Link href="/empresas/nueva">Registrar cliente en el proveedor</Link>
+          </Button>
         </div>
       ) : (
         <FirmantesClient
+          canMutate={allowWrite}
           companies={companies.map((c) => ({ id: c.id, razonSocial: c.razonSocial }))}
           selectedCompanyId={selectedId ?? companies[0]!.id}
           signatories={signatories.map((s) => ({

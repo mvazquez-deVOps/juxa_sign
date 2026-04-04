@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { dbWebhookEventsForOrganization } from "@/lib/data/repository";
 import {
   Table,
   TableBody,
@@ -29,16 +29,13 @@ function PayloadCell({ payload }: { payload: string }) {
   );
 }
 
-export async function WebhookEventsTable() {
-  const events = await prisma.webhookEvent.findMany({
-    orderBy: { receivedAt: "desc" },
-    take: 25,
-  });
+export async function WebhookEventsTable({ organizationId }: { organizationId: string }) {
+  const events = await dbWebhookEventsForOrganization(organizationId, 25);
 
   if (events.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        Aún no hay eventos. Cuando DIGID llame al webhook, aparecerán aquí (útil con túnel en local).
+        Aún no hay eventos. Cuando el proveedor notifique al webhook, aparecerán aquí (útil con túnel en local).
       </p>
     );
   }
@@ -49,6 +46,10 @@ export async function WebhookEventsTable() {
         <TableRow>
           <TableHead>Recibido</TableHead>
           <TableHead>Procesado</TableHead>
+          <TableHead>Doc. remoto</TableHead>
+          <TableHead>Estado parseado</TableHead>
+          <TableHead>Parse</TableHead>
+          <TableHead>Hash</TableHead>
           <TableHead>Payload</TableHead>
         </TableRow>
       </TableHeader>
@@ -63,7 +64,29 @@ export async function WebhookEventsTable() {
                 {e.processed ? "Sí" : "No"}
               </Badge>
             </TableCell>
-            <TableCell className="max-w-[min(100%,32rem)]">
+            <TableCell className="text-xs">
+              {e.documentDigidId != null ? e.documentDigidId : "—"}
+            </TableCell>
+            <TableCell className="max-w-[8rem] truncate text-xs text-muted-foreground" title={e.parsedStatus ?? ""}>
+              {e.parsedStatus ?? "—"}
+            </TableCell>
+            <TableCell className="max-w-[10rem] text-xs">
+              {e.parseError ? (
+                <span className="text-destructive" title={e.parseError}>
+                  {e.parseError.length > 48 ? `${e.parseError.slice(0, 48)}…` : e.parseError}
+                </span>
+              ) : (
+                "—"
+              )}
+            </TableCell>
+            <TableCell className="font-mono text-[10px] text-muted-foreground">
+              {e.payloadHash ? (
+                <span title={e.payloadHash}>{e.payloadHash.slice(0, 10)}…</span>
+              ) : (
+                "—"
+              )}
+            </TableCell>
+            <TableCell className="max-w-[min(100%,24rem)]">
               <PayloadCell payload={e.payload} />
             </TableCell>
           </TableRow>

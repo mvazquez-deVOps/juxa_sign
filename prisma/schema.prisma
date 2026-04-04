@@ -7,16 +7,112 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  /// Visor homologado con potencial consumidor: consulta panel y catálogo de planes; sin mutaciones ni envío a firma.
+  VIEWER
+  OPERATOR
+  /// Consumidor de folios en panel (cartera propia; no es el firmante DIGID)
+  USER
+  ADMIN
+  SUPERADMIN
+  /// QA / desarrollo: mismos permisos operativos que OPERATOR; inicio con checklist sandbox, E2E y avance MVP.
+  SANDBOX
+}
+
+enum FolioLedgerReason {
+  SUPERADMIN_GRANT
+  PURCHASE
+  SEND_STANDARD
+  SEND_PREMIUM
+  ADMIN_TRANSFER
+  ADJUSTMENT
+  /// Regalo inicial al crear organización (prueba SaaS)
+  TRIAL_GRANT
+}
+
+model Organization {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  /// Fin del periodo de prueba (30 días desde el registro self-service); informativo para marketing y UI.
+  trialEndsAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  users     User[]
+  companies Company[]
+  invites   OrganizationInvite[]
+  settings  OrganizationSettings?
+  apiKeys   ApiKey[]
+  signingJobs SigningJob[]
+  folioLedgerEntries FolioLedgerEntry[]
+}
+
+model User {
+  id             String       @id @default(cuid())
+  email          String       @unique
+  passwordHash   String
+  role           UserRole     @default(OPERATOR)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// Saldo de créditos de folio (envío estándar = 1, premium = 2)
+  folioBalance   Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  folioLedgerEntries     FolioLedgerEntry[] @relation("FolioLedgerTarget")
+  folioLedgerEntriesMade FolioLedgerEntry[] @relation("FolioLedgerActor")
+  /// Cartera cuyos folios descuentan las llamadas API que usan una clave con este dueño.
+  ownedApiKeys           ApiKey[]           @relation("ApiKeyOwner")
+
+  @@index([organizationId])
+}
+
+model FolioPack {
+  id             String   @id @default(cuid())
+  slug           String   @unique
+  name           String
+  description    String?
+  folioAmount    Int
+  priceMxn       Decimal  @db.Decimal(10, 2)
+  sortOrder      Int      @default(0)
+  active         Boolean  @default(true)
+  stripePriceId  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model FolioLedgerEntry {
+  id                String            @id @default(cuid())
+  userId            String
+  user              User              @relation("FolioLedgerTarget", fields: [userId], references: [id], onDelete: Cascade)
+  organizationId    String
+  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  delta             Int
+  balanceAfter      Int
+  reason            FolioLedgerReason
+  refType           String?
+  refId             String?
+  createdAt         DateTime          @default(now())
+  createdByUserId   String?
+  createdBy         User?             @relation("FolioLedgerActor", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([organizationId, createdAt])
+}
+
 model Company {
-  id            String      @id @default(cuid())
-  digidIdClient Int         @unique
-  razonSocial   String
-  rfc           String
-  email         String
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  signatories   Signatory[]
-  documents     Document[]
+  id              String        @id @default(cuid())
+  digidIdClient   Int           @unique
+  razonSocial     String
+  rfc             String
+  email           String
+  organizationId  String?
+  organization    Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  signatories     Signatory[]
+  documents       Document[]
+
+  @@index([organizationId])
 }
 
 model Signatory {
@@ -39,18 +135,19 @@ model Signatory {
 }
 
 model Document {
-  id              String               @id @default(cuid())
-  companyId       String
-  company         Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  digidDocumentId Int                  @unique
-  nameDoc         String
-  urlDocumento    String?
-  status          String?
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
-  placements      SignaturePlacement[]
-  signatories     DocumentSignatory[]
-  certificates    Certificate[]
+  id                String               @id @default(cuid())
+  companyId         String
+  company           Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  digidDocumentId   Int                  @unique
+  nameDoc           String
+  urlDocumento      String?
+  status            String?
+  lastStatusSyncAt  DateTime?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  placements        SignaturePlacement[]
+  signatories       DocumentSignatory[]
+  certificates      Certificate[]
 }
 
 model DocumentSignatory {
@@ -75,14 +172,25 @@ model SignaturePlacement {
   y           Float
   widthPx     Float
   heightPx    Float
+  /// Orden de firma enviado a DIGID como `position` en coordenadas (menor primero).
+  sortOrder   Int       @default(0)
   createdAt   DateTime  @default(now())
+
+  @@index([documentId, sortOrder])
 }
 
 model WebhookEvent {
-  id         String   @id @default(cuid())
-  payload    String
-  receivedAt DateTime @default(now())
-  processed  Boolean  @default(false)
+  id              String   @id @default(cuid())
+  payload         String
+  /// SHA-256 (hex) de cabecera opcional + cuerpo; idempotencia en ventana de 7 días
+  payloadHash     String?
+  receivedAt      DateTime @default(now())
+  processed       Boolean  @default(false)
+  documentDigidId Int?
+  parsedStatus    String?
+  parseError      String?
+
+  @@index([payloadHash, receivedAt])
 }
 
 model Certificate {
@@ -93,4 +201,72 @@ model Certificate {
   filePath    String?
   mimeType    String   @default("application/pdf")
   createdAt   DateTime @default(now())
+}
+
+model OrganizationInvite {
+  id              String       @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email           String
+  role            UserRole     @default(OPERATOR)
+  tokenHash       String
+  expiresAt       DateTime
+  invitedByUserId String?
+  createdAt       DateTime     @default(now())
+
+  @@unique([organizationId, email])
+  @@index([tokenHash])
+}
+
+model OrganizationSettings {
+  organizationId       String       @id
+  organization         Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  displayName          String?
+  maxUsers             Int?
+  /// Cuota mensual de envíos a firma (gobierno; enforce opcional en envíos)
+  maxMonthlySends      Int?
+  /// Política org: permitir folio premium / NOM-151 por defecto en envíos
+  folioPremiumEnabled  Boolean      @default(false)
+  updatedAt            DateTime     @updatedAt
+}
+
+model ApiKey {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// Usuario cuya cartera (`folioBalance`) se debita en envíos vía esta clave.
+  ownerUserId    String
+  ownerUser      User         @relation("ApiKeyOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  name           String
+  keyPrefix      String
+  keyHash        String
+  createdAt      DateTime     @default(now())
+  lastUsedAt     DateTime?
+
+  @@index([organizationId])
+  @@index([keyHash])
+  @@index([ownerUserId])
+}
+
+enum SigningJobStatus {
+  PENDING
+  RUNNING
+  DONE
+  ERROR
+}
+
+model SigningJob {
+  id              String           @id @default(cuid())
+  organizationId  String
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  status          SigningJobStatus @default(PENDING)
+  clientReference String?
+  payload         Json
+  result          Json?
+  errorMessage    String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@unique([organizationId, clientReference])
+  @@index([organizationId, status])
 }

@@ -6,8 +6,16 @@ import { syncDocumentsStatusBulk } from "@/app/actions/document";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 
-export function EnviosSyncAllButton({ disabled }: { disabled?: boolean }) {
+export function EnviosSyncAllButton({
+  disabled,
+  canSync = true,
+}: {
+  disabled?: boolean;
+  /** Rol VIEWER: oculto. */
+  canSync?: boolean;
+}) {
   const [pending, start] = useTransition();
+  if (!canSync) return null;
   return (
     <Button
       type="button"
@@ -25,7 +33,7 @@ export function EnviosSyncAllButton({ disabled }: { disabled?: boolean }) {
       }
     >
       <RefreshCw className={`mr-2 h-4 w-4 ${pending ? "animate-spin" : ""}`} />
-      {pending ? "Sincronizando…" : "Sincronizar estados (dInfoDocto)"}
+      {pending ? "Sincronizando…" : "Sincronizar estados"}
     </Button>
   );
 }

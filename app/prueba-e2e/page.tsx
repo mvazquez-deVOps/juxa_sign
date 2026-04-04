@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { PruebaE2ELoginHint } from "./login-hint";
 
 export const dynamic = "force-dynamic";
 
@@ -23,10 +24,18 @@ export default function PruebaE2EPage() {
             Contenido de <code className="text-xs">docs/checklist-pruebas-firma.md</code>
           </p>
         </div>
-        <Button variant="outline" asChild>
-          <Link href="/">Volver al inicio</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="default" asChild>
+            <Link href="/pruebas-panel">Mapa del panel y estado DIGID</Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/">Volver al inicio</Link>
+          </Button>
+        </div>
       </div>
+
+      <PruebaE2ELoginHint />
+
       <pre className="max-h-[70vh] overflow-auto rounded-xl border bg-card p-4 text-xs leading-relaxed whitespace-pre-wrap">
         {body}
       </pre>

@@ -19,8 +19,10 @@ const initial: ConfigActionState | null = null;
 
 export function ConfigWebhookForm({
   companies,
+  canMutate: allowWrite,
 }: {
   companies: { id: string; razonSocial: string }[];
+  canMutate: boolean;
 }) {
   const [companyId, setCompanyId] = useState(companies[0]?.id ?? "");
   const [state, formAction, pending] = useActionState(registerDigidWebhook, initial);
@@ -45,32 +47,38 @@ export function ConfigWebhookForm({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Registrar webhook en DIGID</CardTitle>
+        <CardTitle>Registrar webhook en el proveedor</CardTitle>
         <CardDescription>add_webhook · IdClient + URL pública HTTPS en producción.</CardDescription>
       </CardHeader>
       <CardContent>
-        <form action={formAction} className="space-y-4">
-          <input type="hidden" name="companyId" value={companyId} />
-          <div className="space-y-2">
-            <Label>Empresa (IdClient)</Label>
-            <Select value={companyId} onValueChange={setCompanyId}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {companies.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.razonSocial}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <Button type="submit" disabled={pending}>
-            {pending ? "Registrando…" : "Registrar webhook"}
-          </Button>
-          <ActionErrorDetails failed={state != null && !state.ok} message={state?.message} />
-        </form>
+        {!allowWrite ? (
+          <p className="text-sm text-muted-foreground">
+            Tu perfil es visor · potencial consumidor: no puedes registrar el webhook desde aquí.
+          </p>
+        ) : (
+          <form action={formAction} className="space-y-4">
+            <input type="hidden" name="companyId" value={companyId} />
+            <div className="space-y-2">
+              <Label>Empresa (IdClient)</Label>
+              <Select value={companyId} onValueChange={setCompanyId}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {companies.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.razonSocial}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button type="submit" disabled={pending}>
+              {pending ? "Registrando…" : "Registrar webhook"}
+            </Button>
+            <ActionErrorDetails failed={state != null && !state.ok} message={state?.message} />
+          </form>
+        )}
       </CardContent>
     </Card>
   );

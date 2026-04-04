@@ -1,13 +1,19 @@
 import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
-import { prisma } from "@/lib/prisma";
+import { dbCertificateFindFirstInOrg } from "@/lib/data/repository";
+import { resolveSession } from "@/lib/session";
 
 type Props = { params: Promise<{ id: string }> };
 
 export async function GET(_req: Request, { params }: Props) {
+  const session = await resolveSession();
+  if (!session?.user?.organizationId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { id } = await params;
-  const cert = await prisma.certificate.findUnique({ where: { id } });
+  const cert = await dbCertificateFindFirstInOrg(id, session.user.organizationId);
   if (!cert?.filePath) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }

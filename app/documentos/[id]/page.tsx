@@ -1,6 +1,9 @@
 import { notFound } from "next/navigation";
+import { unstable_noStore as noStore } from "next/cache";
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { dbFindDocumentDetailInOrg, dbSignatoryFindManyByCompany } from "@/lib/data/repository";
+import { canMutateSigningFlow, canSyncRemoteDocumentStatus } from "@/lib/gate";
+import { requireOrgContext } from "@/lib/org-scope";
 import { DocumentDetailClient } from "./document-detail-client";
 import { DocumentPageHeaderActions } from "./document-page-header-actions";
 import { Button } from "@/components/ui/button";
@@ -8,22 +11,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 type Props = { params: Promise<{ id: string }> };
 
+export const dynamic = "force-dynamic";
+
 export default async function DocumentDetailPage({ params }: Props) {
+  noStore();
+  const { organizationId, role } = await requireOrgContext();
+  const allowWrite = canMutateSigningFlow(role);
+  const canSyncRemote = canSyncRemoteDocumentStatus(role);
   const { id } = await params;
-  const doc = await prisma.document.findUnique({
-    where: { id },
-    include: {
-      company: true,
-      placements: { include: { signatory: true }, orderBy: { createdAt: "asc" } },
-      certificates: { orderBy: { createdAt: "desc" } },
-    },
-  });
+  const doc = await dbFindDocumentDetailInOrg(id, organizationId);
   if (!doc) notFound();
 
-  const signatories = await prisma.signatory.findMany({
-    where: { companyId: doc.companyId },
-    orderBy: { name: "asc" },
-  });
+  const signatories = await dbSignatoryFindManyByCompany(doc.companyId);
 
   const proxyUrl = doc.urlDocumento
     ? `/api/proxy-pdf?url=${encodeURIComponent(doc.urlDocumento)}`
@@ -35,7 +34,7 @@ export default async function DocumentDetailPage({ params }: Props) {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">{doc.nameDoc}</h1>
           <p className="text-muted-foreground">
-            {doc.company.razonSocial} · Id DIGID {doc.digidDocumentId}
+            {doc.company.razonSocial} · Id. documento {doc.digidDocumentId}
             {doc.status ? ` · ${doc.status}` : ""}
           </p>
         </div>
@@ -43,29 +42,43 @@ export default async function DocumentDetailPage({ params }: Props) {
           <Button variant="outline" asChild>
             <Link href="/documentos">Volver</Link>
           </Button>
-          <DocumentPageHeaderActions documentId={doc.id} />
-          <Button asChild>
-            <Link href={`/documentos/${doc.id}/enviar`}>Enviar a firmar</Link>
-          </Button>
+          <DocumentPageHeaderActions documentId={doc.id} canSync={canSyncRemote} />
+          {allowWrite ? (
+            <Button asChild variant="default">
+              <Link href={`/documentos/${doc.id}/enviar`}>Enviar a firmar</Link>
+            </Button>
+          ) : null}
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Constancias (certify_doc)</CardTitle>
+          <CardTitle className="text-base">Constancias</CardTitle>
           <CardDescription>
-            PDF guardado en el servidor cuando DIGID devuelve archivo. También puedes generar una desde{" "}
-            <Link href={`/documentos/${doc.id}/enviar`} className="text-primary underline">
-              Enviar a firmar
-            </Link>
-            .
+            PDF guardado en el servidor cuando el proveedor devuelve archivo.
+            {allowWrite ? (
+              <>
+                {" "}
+                También puedes generar una desde{" "}
+                <Link href={`/documentos/${doc.id}/enviar`} className="text-primary underline">
+                  Enviar a firmar
+                </Link>
+                .
+              </>
+            ) : (
+              <>
+                {" "}
+                En perfil visor · potencial consumidor no se gestionan envíos aquí; revisa estados en Envíos y planes en
+                Folios.
+              </>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-2 text-sm">
           {doc.certificates.length === 0 ? (
             <p className="rounded-md border border-dashed bg-muted/30 px-4 py-6 text-center text-muted-foreground">
               Aún no hay constancias para este documento. Tras firmar, usa el botón de constancia en la
-              pantalla de envío; si DIGID devuelve PDF, aparecerá aquí con enlace de descarga seguro.
+              pantalla de envío; si el proveedor devuelve PDF, aparecerá aquí con enlace de descarga seguro.
             </p>
           ) : (
             doc.certificates.map((c) => (
@@ -87,7 +100,11 @@ export default async function DocumentDetailPage({ params }: Props) {
       </Card>
 
       <DocumentDetailClient
+        canMutate={allowWrite}
+        canSyncRemote={canSyncRemote}
         documentId={doc.id}
+        companyId={doc.companyId}
+        companyRazonSocial={doc.company.razonSocial}
         fileUrl={proxyUrl}
         signatories={signatories.map((s) => ({ id: s.id, name: s.name, digidId: s.digidSignatoryId }))}
         placements={doc.placements.map((p) => ({

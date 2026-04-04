@@ -43,6 +43,12 @@ Panel Next.js para gestionar empresas, firmantes y documentos con **DIGID Méxic
    npm run db:push
    ```
 
+   Opcional — **datos demo solo en DB local** (empresa + firmantes con IDs ficticios `888888xxx`; no sirven contra la API DIGID hasta que registres de verdad):
+
+   ```bash
+   npm run db:seed
+   ```
+
 5. **Verificar env (sin mostrar secretos)**
 
    ```bash
@@ -55,7 +61,12 @@ Panel Next.js para gestionar empresas, firmantes y documentos con **DIGID Méxic
    npm run dev
    ```
 
-   Abre `http://localhost:3000` (o el puerto que indique la consola).
+   Abre **`http://localhost:3333`** (puerto del script `npm run dev`). Si entras por **3000** o **3008** y “no carga”, es que el servidor está en otro puerto: abre la URL que imprime la terminal o ejecuta `npm run dev:3000` / `npm run dev:3008` y alinea `NEXT_PUBLIC_APP_URL` y, si aplica, `AUTH_URL` en `.env` con ese host y puerto (NextAuth y enlaces internos dependen de ello).
+
+### Acceso al panel (login)
+
+- **NextAuth** (recomendado sin demo pública): define `AUTH_SECRET` y crea usuario en BD (`npm run db:seed` puede generar admin con `ADMIN_EMAIL` / `ADMIN_PASSWORD` del `.env.example`).
+- **Contraseña demo:** `DEMO_PASSWORD` + `DEMO_AUTH_SECRET` + `DEMO_ORGANIZATION_ID` (cuid de `Organization`); ver `.env.example` y `npm run check:env`.
 
 ### Reset de base local
 
@@ -78,9 +89,12 @@ Puedes duplicar `.env` como `.env.staging` con otra `DATABASE_URL` y las mismas 
 | `npm run build`     | `prisma generate` + build producción             |
 | `npm run lint`      | ESLint                                           |
 | `npm run check:env` | Comprueba variables mínimas E2E                  |
+| `npm run check:env:production` | Go-live: URL pública, webhook, `AUTH_SECRET` si no hay demo, etc. |
+| `npm run check:env:production:pending-url` | Mismo rol con avisos si aún no hay dominio definitivo |
+| `npm run predeploy` | `lint` + `build` (ejecutar con `.env` de staging/prod cargado) |
 | `npm run db:push`   | Sincroniza schema con la DB                      |
 | `npm run db:studio` | Prisma Studio                                    |
-| `npm run db:seed`   | Mensaje guía (no inserta datos DIGID)            |
+| `npm run db:seed`   | Empresa + firmantes demo en DB local (IDs ficticios; ver `prisma/seed.mjs`) |
 | `npm run db:docker` | Levanta Postgres con Docker Compose              |
 
 ## Documentación
@@ -88,10 +102,11 @@ Puedes duplicar `.env` como `.env.staging` con otra `DATABASE_URL` y las mismas 
 | Documento | Contenido |
 | --------- | --------- |
 | [docs/checklist-pruebas-firma.md](docs/checklist-pruebas-firma.md) | Prueba E2E en sandbox (también en la app: ruta **`/prueba-e2e`**) |
-| [docs/flujo-producto.md](docs/flujo-producto.md) | Actores, pantallas y flujo |
+| [docs/flujo-producto.md](docs/flujo-producto.md) | Resumen en repo; **guía completa en la app: `/flujo-producto`** (TSX, no Markdown embebido) |
 | [docs/map-acciones-api.md](docs/map-acciones-api.md) | Server Actions ↔ endpoints DIGID |
 | [docs/runbook-fallos.md](docs/runbook-fallos.md) | Síntomas y causas habituales |
 | [docs/api-digid.md](docs/api-digid.md) | Diccionario de API DIGID |
+| [docs/despliegue.md](docs/despliegue.md) | Checklist previa a producción |
 
 ## Opcional: webhook DIGID en local
 
@@ -103,7 +118,8 @@ GitHub Actions ejecuta `lint` y `build` con una `DATABASE_URL` ficticia solo par
 
 ## Próximas iteraciones (producto)
 
-- Autenticación de usuarios del panel y KYC por firmante en UI si el negocio lo exige. Hoy el prototipo es de uso interno / demo sin login.
+- Roles y permisos más finos; 2FA opcional; almacenamiento de constancias en objeto (S3) en despliegues efímeros.
+- KYC por firmante ya está en la pantalla **Enviar** (checkbox por fila).
 
 ## Licencia
 
