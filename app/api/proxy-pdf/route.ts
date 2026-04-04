@@ -41,8 +41,9 @@ export async function GET(req: NextRequest) {
   if (localOk) {
     const localBuf = await tryReadLoopbackPublicPdf(parsed);
     if (localBuf && localBuf.byteLength >= 5) {
-      const head = localBuf.subarray(0, 5).toString();
-      if (head === "%PDF-") {
+      const head = localBuf.subarray(0, 5);
+      const sig = String.fromCharCode(...head);
+      if (sig === "%PDF-") {
         return new NextResponse(new Uint8Array(localBuf), {
           headers: {
             "Content-Type": "application/pdf",
