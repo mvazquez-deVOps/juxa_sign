@@ -189,6 +189,10 @@ type JuxaMemoryStores = {
   folioLedger: MemoryFolioLedgerEntry[];
   folioPacksById: Map<string, MemoryFolioPack>;
   folioPacksBySlug: Map<string, MemoryFolioPack>;
+  apiKeysById: Map<string, MemoryApiKeyRow>;
+  apiKeysByHash: Map<string, MemoryApiKeyRow>;
+  signingJobsById: Map<string, MemorySigningJobRow>;
+  signingJobsByOrgRef: Map<string, MemorySigningJobRow>;
 };
 
 const JUXA_MEM_GLOBAL_KEY = "__JUXA_MEMORY_STORE_V1__" as const;
@@ -232,9 +236,22 @@ function $m(): JuxaMemoryStores {
       folioLedger: [],
       folioPacksById: new Map(),
       folioPacksBySlug: new Map(),
+      apiKeysById: new Map(),
+      apiKeysByHash: new Map(),
+      signingJobsById: new Map(),
+      signingJobsByOrgRef: new Map(),
     };
   }
-  return g[JUXA_MEM_GLOBAL_KEY]!;
+  const store = g[JUXA_MEM_GLOBAL_KEY]!;
+  if (!("apiKeysById" in store)) {
+    Object.assign(store, {
+      apiKeysById: new Map<string, MemoryApiKeyRow>(),
+      apiKeysByHash: new Map<string, MemoryApiKeyRow>(),
+      signingJobsById: new Map<string, MemorySigningJobRow>(),
+      signingJobsByOrgRef: new Map<string, MemorySigningJobRow>(),
+    });
+  }
+  return store;
 }
 
 function touch<T extends { updatedAt: Date }>(row: T): T {
@@ -1457,11 +1474,6 @@ export type MemorySigningJobRow = {
   updatedAt: Date;
 };
 
-const apiKeysById = new Map<string, MemoryApiKeyRow>();
-const apiKeysByHash = new Map<string, MemoryApiKeyRow>();
-const signingJobsById = new Map<string, MemorySigningJobRow>();
-const signingJobsByOrgRef = new Map<string, MemorySigningJobRow>();
-
 function jobRefKey(organizationId: string, clientReference: string) {
   return `${organizationId}\0${clientReference}`;
 }
@@ -1484,41 +1496,41 @@ export function memoryApiKeyCreate(data: {
     createdAt: new Date(),
     lastUsedAt: null,
   };
-  apiKeysById.set(row.id, row);
-  apiKeysByHash.set(row.keyHash, row);
+  $m().apiKeysById.set(row.id, row);
+  $m().apiKeysByHash.set(row.keyHash, row);
   return row;
 }
 
 export function memoryApiKeysList(organizationId: string) {
   seed();
-  return [...apiKeysById.values()]
+  return [...$m().apiKeysById.values()]
     .filter((k) => k.organizationId === organizationId)
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
 export function memoryApiKeyDelete(id: string, organizationId: string): boolean {
   seed();
-  const k = apiKeysById.get(id);
+  const k = $m().apiKeysById.get(id);
   if (!k || k.organizationId !== organizationId) return false;
-  apiKeysByHash.delete(k.keyHash);
-  apiKeysById.delete(id);
+  $m().apiKeysByHash.delete(k.keyHash);
+  $m().apiKeysById.delete(id);
   return true;
 }
 
 export function memoryApiKeyFindByHash(keyHash: string): MemoryApiKeyRow | null {
   seed();
-  return apiKeysByHash.get(keyHash) ?? null;
+  return $m().apiKeysByHash.get(keyHash) ?? null;
 }
 
 export function memoryApiKeyTouchUsed(keyHash: string) {
   seed();
-  const k = apiKeysByHash.get(keyHash);
+  const k = $m().apiKeysByHash.get(keyHash);
   if (k) k.lastUsedAt = new Date();
 }
 
 export function memorySigningJobFindByOrgRef(organizationId: string, clientReference: string) {
   seed();
-  return signingJobsByOrgRef.get(jobRefKey(organizationId, clientReference)) ?? null;
+  return $m().signingJobsByOrgRef.get(jobRefKey(organizationId, clientReference)) ?? null;
 }
 
 export function memorySigningJobCreate(data: {
@@ -1539,9 +1551,9 @@ export function memorySigningJobCreate(data: {
     createdAt: now,
     updatedAt: now,
   };
-  signingJobsById.set(row.id, row);
+  $m().signingJobsById.set(row.id, row);
   if (data.clientReference) {
-    signingJobsByOrgRef.set(jobRefKey(data.organizationId, data.clientReference), row);
+    $m().signingJobsByOrgRef.set(jobRefKey(data.organizationId, data.clientReference), row);
   }
   return row;
 }
@@ -1551,7 +1563,7 @@ export function memorySigningJobUpdate(
   data: Partial<Pick<MemorySigningJobRow, "status" | "result" | "errorMessage">>,
 ) {
   seed();
-  const j = signingJobsById.get(id);
+  const j = $m().signingJobsById.get(id);
   if (!j) return null;
   if (data.status !== undefined) j.status = data.status;
   if (data.result !== undefined) j.result = data.result;
@@ -1562,7 +1574,7 @@ export function memorySigningJobUpdate(
 
 export function memorySigningJobsList(organizationId: string, take: number) {
   seed();
-  return [...signingJobsById.values()]
+  return [...$m().signingJobsById.values()]
     .filter((j) => j.organizationId === organizationId)
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     .slice(0, take);

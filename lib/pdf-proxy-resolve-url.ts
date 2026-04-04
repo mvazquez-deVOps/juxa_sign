@@ -72,12 +72,14 @@ export function resolveLoopbackPdfFetchUrl(parsed: URL, req: NextRequest): strin
     return `${proto}://${host}/${file}`;
   }
 
-  const path = parsed.pathname || "";
-  const isPdfPath = path.toLowerCase().endsWith(".pdf");
+  const pathname = parsed.pathname || "";
+  const isPdfPath = pathname.toLowerCase().endsWith(".pdf");
   if (isPdfPath) {
-    const base = path.split("/").filter(Boolean).pop() ?? "";
-    const mapped = mapPublicPdfFilename(base);
-    const outPath = mapped !== base ? `/${mapped}` : path;
+    const segments = pathname.split("/").filter(Boolean);
+    const fileName = segments.pop() ?? "";
+    const mappedName = mapPublicPdfFilename(fileName);
+    const outPath =
+      mappedName !== fileName ? `/${[...segments, mappedName].join("/")}` : pathname;
     return `${proto}://${host}${outPath}${parsed.search}`;
   }
 
