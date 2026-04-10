@@ -25,6 +25,8 @@ test.describe("autenticación", () => {
     await page.getByLabel("Contraseña").fill("operador1234");
     await page.getByRole("button", { name: "Acceder" }).click();
     await expect(page).toHaveURL(/\/$/);
+    await page.goto("/documentos");
+    await expect(page.getByRole("heading", { name: "Documentos", exact: true })).toBeVisible();
     await expect(page.getByText(/Rol:\s*Operador/)).toBeVisible();
   });
 
