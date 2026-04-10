@@ -15,7 +15,7 @@ function isStatic(pathname: string) {
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
     pathname === "/icon.svg" ||
-    (pathname.endsWith(".svg") && !pathname.startsWith("/api"))
+    ((pathname.endsWith(".svg") || pathname.endsWith(".png") || pathname.endsWith(".jpg")) && !pathname.startsWith("/api"))
   );
 }
 
@@ -105,7 +105,9 @@ const withNextAuth = auth((req) => {
     path.startsWith("/_next") ||
     path.startsWith("/favicon") ||
     path === "/icon.svg" ||
-    path.endsWith(".svg");
+    path.endsWith(".svg")||
+    path.endsWith(".png") ||
+    path.endsWith(".jpg");
 
   if (isStaticPath || isPublicMockSigningPdf(path) || isAuthApi || isWebhook || isPublicApiV1) {
     return NextResponse.next();

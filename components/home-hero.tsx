@@ -31,11 +31,11 @@ export function HomeHero({ showSandboxShortcuts = false }: { showSandboxShortcut
         variants={item}
         className="mt-2 max-w-2xl text-3xl font-bold tracking-tight md:text-4xl"
       >
-        Firma documentos de forma segura, sin exponer credenciales en el navegador.
+        Firma documentos de forma segura.
       </motion.h1>
       <motion.p variants={item} className="mt-4 max-w-xl text-muted-foreground">
-        Registra clientes en el proveedor (empresa o persona física), administra firmantes, sube PDFs, coloca marcas de
-        firma y envía a firmar — todo desde un panel moderno y seguro.
+        Registra clientes -empresa o persona física-, administra firmantes, sube PDFs, coloca marcas de
+        firma y envía a firmar. Todo desde un sola sola plataforma.
       </motion.p>
       <motion.div variants={item} className="mt-8 flex flex-wrap gap-3">
         <Button asChild>

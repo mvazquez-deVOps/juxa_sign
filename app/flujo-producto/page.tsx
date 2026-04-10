@@ -36,15 +36,6 @@ export default async function FlujoProductoPage() {
         </Button>
       </div>
 
-      <InternalGuideComment role={role} title="Contexto para equipo y PM">
-        <p>
-          Esta guía es la referencia viva del recorrido en producto. Los detalles de endpoints viven en{" "}
-          <code className="rounded bg-amber-100/80 px-1 text-xs dark:bg-amber-900/40">docs/map-acciones-api.md</code> y{" "}
-          <code className="rounded bg-amber-100/80 px-1 text-xs dark:bg-amber-900/40">docs/api-digid.md</code> en el repo;
-          prioriza siempre <strong>api-digid.md</strong> frente a cambios del proveedor.
-        </p>
-      </InternalGuideComment>
-
       <Card>
         <CardHeader>
           <CardTitle>Actores</CardTitle>
@@ -213,16 +204,6 @@ export default async function FlujoProductoPage() {
             <code className="text-xs">FolioLedgerEntry</code>). Catálogo de paquetes:{" "}
             <Link href="/folios/planes" className="text-primary underline">Planes de folios</Link>.
           </p>
-          <InternalGuideComment role={role} title="Acreditación plataforma">
-            <p>
-              La plataforma puede otorgar saldo y administrar paquetes globales en{" "}
-              <Link href="/superadmin/folios" className="font-medium text-primary underline">
-                /superadmin/folios
-              </Link>
-              . Los movimientos quedan reflejados en el ledger con motivos como{" "}
-              <code className="text-xs">SUPERADMIN_GRANT</code>.
-            </p>
-          </InternalGuideComment>
         </CardContent>
       </Card>
     </div>
