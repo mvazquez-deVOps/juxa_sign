@@ -27,7 +27,7 @@ test.describe("autenticación", () => {
     await expect(page).toHaveURL(/\/$/);
     await page.goto("/documentos");
     await expect(page.getByRole("heading", { name: "Documentos", exact: true })).toBeVisible();
-    await expect(page.getByText(/Rol:\s*Operador/)).toBeVisible();
+    await expect(page.locator("aside").getByText(/Rol:\s*Operador/)).toBeVisible();
   });
 
   test("sin sesión, documentos redirige a login", async ({ page }) => {
