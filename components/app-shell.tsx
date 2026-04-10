@@ -39,7 +39,7 @@ const navPanelReadOnly = [
   { href: "/envios", label: "Bandeja de envíos", icon: Send },
   { href: "/folios", label: "Mis folios", icon: Wallet2 },
   { href: "/folios/planes", label: "Planes", icon: WalletCards },
-  { href: "/ayuda", label: "Ayuda", icon: CircleHelp },,
+  { href: "/ayuda", label: "Ayuda", icon: CircleHelp },
 ];
 
 export function AppShell({
