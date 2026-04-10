@@ -202,7 +202,7 @@ export default async function FlujoProductoPage() {
             ): 1 folio envío estándar, 2 premium. El historial está en{" "}
             <Link href="/folios" className="text-primary underline">Mis folios</Link> (
             <code className="text-xs">FolioLedgerEntry</code>). Catálogo de paquetes:{" "}
-            <Link href="/folios/planes" className="text-primary underline">Planes de folios</Link>.
+            <Link href="/folios/planes" className="text-primary underline">Planes</Link>.
           </p>
         </CardContent>
       </Card>

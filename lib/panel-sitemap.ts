@@ -15,7 +15,7 @@ export const PANEL_SITEMAP_CORE: PanelSitemapEntry[] = [
   { href: "/documentos/nuevo", label: "Nuevo documento", description: "Subir PDF y crear en DIGID." },
   { href: "/envios", label: "Envíos", description: "Sincronizar estado, filtros, CSV." },
   { href: "/folios", label: "Mis folios", description: "Saldo y movimientos de cartera." },
-  { href: "/folios/planes", label: "Planes de folios", description: "Catálogo comercial de paquetes." },
+  { href: "/folios/planes", label: "Planes", description: "Catálogo comercial de paquetes." },
   { href: "/lotes", label: "Lotes", description: "Envíos masivos vía CSV y jobs." },
   { href: "/configuracion", label: "Configuración", description: "Webhook DIGID y utilidades." },
   { href: "/configuracion/equipo", label: "Equipo", description: "Invitaciones y límites de usuarios." },

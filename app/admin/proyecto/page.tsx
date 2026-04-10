@@ -173,7 +173,7 @@ export default async function AdminProyectoPage() {
           <p>
             Los planes visibles y la acreditación manual están en{" "}
             <Link href="/folios/planes" className="text-primary underline-offset-4 hover:underline">
-              Planes de folios
+              Planes
             </Link>{" "}
             y en plataforma. El criterio de <strong className="text-foreground">Entrega</strong> “Cobro en línea” marca
             cuándo exista integración tipo Stripe y acreditación automática.

@@ -44,12 +44,6 @@ export function HomeHero({ showSandboxShortcuts = false }: { showSandboxShortcut
             <ArrowRight className="h-4 w-4" />
           </Link>
         </Button>
-        <Button variant="outline" asChild>
-          <Link href="/documentos">Ver documentos</Link>
-        </Button>
-        <Button variant="outline" asChild>
-          <Link href="/envios">Envíos y estado</Link>
-        </Button>
         {showSandboxShortcuts ? (
           <Button variant="outline" asChild>
             <Link href="/prueba-e2e">Checklist sandbox (E2E)</Link>

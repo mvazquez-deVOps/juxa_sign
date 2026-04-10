@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { FileSignature, Building2, Users, FileText, LayoutDashboard, Settings, Send, Map, TrendingUp, UserPlus, Layers, KeyRound, Shield, Coins, CircleHelp, FlaskConical, } from "lucide-react";
+import { FileSignature, Building2, Users, FileText, LayoutDashboard, Settings, Send, Map, TrendingUp, UserPlus, Layers, KeyRound, Shield, Coins, CircleHelp, FlaskConical, Wallet2, WalletCards, } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SidebarSessionBlock, type SessionUserChip } from "@/components/sidebar-session";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -8,39 +8,38 @@ import { ThemeToggle } from "@/components/theme-toggle";
 const navCore = [
   { href: "/", label: "Inicio", icon: LayoutDashboard },
   { href: "/empresas", label: "Clientes", icon: Building2 },
-  { href: "/ayuda", label: "Ayuda", icon: CircleHelp },
-  { href: "/firmantes", label: "Firmantes", icon: Users },
   { href: "/documentos", label: "Documentos", icon: FileText },
-  { href: "/envios", label: "Envíos", icon: Send },
-  { href: "/folios", label: "Mis folios", icon: Coins },
-  { href: "/folios/planes", label: "Planes de folios", icon: Coins },
-  { href: "/lotes", label: "Lotes", icon: Layers },
+  { href: "/firmantes", label: "Firmantes", icon: Users },
+  { href: "/lotes", label: "Envíos masivos", icon: Layers },
+  { href: "/envios", label: "Bandeja de envíos", icon: Send },
+  { href: "/folios", label: "Mis folios", icon: Wallet2 },
+  { href: "/folios/planes", label: "Planes", icon: WalletCards },
   { href: "/configuracion", label: "Configuración", icon: Settings },
-  { href: "/configuracion/equipo", label: "Equipo", icon: UserPlus },
+  { href: "/ayuda", label: "Ayuda", icon: CircleHelp },
 ];
 
 const navConsumerFolio = [
   { href: "/", label: "Inicio", icon: LayoutDashboard },
   { href: "/empresas", label: "Clientes", icon: Building2 },
-  { href: "/ayuda", label: "Ayuda", icon: CircleHelp },
-  { href: "/firmantes", label: "Firmantes", icon: Users },
   { href: "/documentos", label: "Documentos", icon: FileText },
-  { href: "/envios", label: "Envíos", icon: Send },
-  { href: "/lotes", label: "Lotes", icon: Layers },
-  { href: "/folios", label: "Mis folios", icon: Coins },
-  { href: "/folios/planes", label: "Planes de folios", icon: Coins },
+  { href: "/firmantes", label: "Firmantes", icon: Users },
+  { href: "/lotes", label: "Envíos masivos", icon: Layers },
+  { href: "/envios", label: "Bandeja de envíos", icon: Send },
+  { href: "/folios", label: "Mis folios", icon: Wallet2 },
+  { href: "/folios/planes", label: "Planes", icon: WalletCards },
+  { href: "/ayuda", label: "Ayuda", icon: CircleHelp },
 ];
 
 /** Rol VIEWER: solo visualización; consulta + planes; sin configuración ni lotes. */
 const navPanelReadOnly = [
   { href: "/", label: "Inicio", icon: LayoutDashboard },
   { href: "/empresas", label: "Clientes", icon: Building2 },
-  { href: "/ayuda", label: "Ayuda", icon: CircleHelp },
-  { href: "/firmantes", label: "Firmantes", icon: Users },
   { href: "/documentos", label: "Documentos", icon: FileText },
-  { href: "/envios", label: "Envíos", icon: Send },
-  { href: "/folios", label: "Mis folios", icon: Coins },
-  { href: "/folios/planes", label: "Planes de folios", icon: Coins },
+  { href: "/firmantes", label: "Firmantes", icon: Users },
+  { href: "/envios", label: "Bandeja de envíos", icon: Send },
+  { href: "/folios", label: "Mis folios", icon: Wallet2 },
+  { href: "/folios/planes", label: "Planes", icon: WalletCards },
+  { href: "/ayuda", label: "Ayuda", icon: CircleHelp },,
 ];
 
 export function AppShell({
@@ -73,11 +72,9 @@ export function AppShell({
   const platformNav = showSuperAdminNav
     ? [{ href: "/superadmin", label: "Plataforma", icon: Shield }]
     : [];
-  const adminOnlyNav = showAdminNav
-    ? [
-        { href: "/configuracion/api-keys", label: "API keys", icon: KeyRound },
-      ]
-    : [];
+    
+  const adminOnlyNav: any[] = [];
+
   const nav = consumerFolioNav
     ? [...navConsumerFolio, ...platformNav]
     : panelReadOnlyNav

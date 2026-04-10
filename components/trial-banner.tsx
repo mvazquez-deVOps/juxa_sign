@@ -27,7 +27,7 @@ export function TrialBanner({ trialEndsAt, expired }: { trialEndsAt: Date; expir
         <div className="flex-1">
           Tu periodo de prueba terminó el {end}.{" "}
           <Link href="/folios/planes" className="font-medium text-amber-50 underline underline-offset-2">
-            Ver planes de folios
+            Ver planes
           </Link>{" "}
           para seguir enviando.
         </div>

@@ -107,7 +107,7 @@ export default function AyudaPrimerosPasosPage() {
             Mis folios
           </Link>{" "}
           y, si aplica, <Link href="/folios/planes" className="font-medium text-primary underline">
-            Planes de folios
+            Planes
           </Link>
           .
         </p>

@@ -31,7 +31,7 @@ export async function PotentialConsumerCallout({ variant }: { variant: Variant }
             <Link href="/ayuda">Centro de ayuda</Link>
           </Button>
           <Button variant="default" size="sm" asChild>
-            <Link href="/folios/planes">Ver planes de folios</Link>
+            <Link href="/folios/planes">Ver planes</Link>
           </Button>
           <Button variant="outline" size="sm" asChild>
             <Link href="/folios">Ver mi saldo</Link>
