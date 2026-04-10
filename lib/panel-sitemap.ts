@@ -1,8 +1,5 @@
 import type { UserRole } from "@prisma/client";
 
-/**
- * Enlaces del panel para el hub de pruebas / mapa (textos en es-MX).
- */
 export type PanelSitemapEntry = {
   href: string;
   label: string;
@@ -24,19 +21,11 @@ export const PANEL_SITEMAP_CORE: PanelSitemapEntry[] = [
   { href: "/configuracion/equipo", label: "Equipo", description: "Invitaciones y límites de usuarios." },
   { href: "/configuracion/api-keys", label: "API keys", description: "Claves para /api/v1/batch/send." },
   { href: "/configuracion/folios", label: "Folios (org)", description: "Acreditación entre miembros (admin org)." },
-  { href: "/ayuda", label: "Ayuda", description: "FAQ y primeros pasos." },
-  { href: "/flujo-producto", label: "Flujo de producto", description: "Guía del recorrido (panel, actores, Prisma vs DIGID)." },
-  { href: "/prueba-e2e", label: "Checklist firma (markdown)", description: "docs/checklist-pruebas-firma.md" },
-];
-
-export const PANEL_SITEMAP_ADMIN: PanelSitemapEntry[] = [
-  { href: "/admin/proyecto", label: "Avance del proyecto", description: "Criterios ponderados código + entrega." },
-  { href: "/hoja-de-ruta-devs", label: "Hoja de ruta (devs)", description: "Fases 0–7 y trabajo sin DB." },
+  { href: "/ayuda", label: "Ayuda", description: "FAQ y primeros pasos." }
 ];
 
 export const PANEL_SITEMAP_SUPERADMIN: PanelSitemapEntry[] = [
   { href: "/superadmin", label: "Plataforma", description: "Resumen global, orgs, folios, lotes." },
-  { href: "/flujo-producto", label: "Guía firma / contrato", description: "Mismo flujo operativo que el resto del panel." },
   { href: "/superadmin/folios", label: "Folios plataforma", description: "Catálogo global y acreditaciones." },
   { href: "/superadmin/lotes", label: "Lotes plataforma", description: "Jobs entre organizaciones." },
 ];
@@ -71,7 +60,7 @@ export function panelHubCoreRoutes(role: UserRole): PanelSitemapEntry[] {
 
 export function panelHubAdminRoutes(role: UserRole): PanelSitemapEntry[] {
   if (role === "USER" || role === "VIEWER") return [];
-  return [...PANEL_SITEMAP_ADMIN];
+  return [];
 }
 
 export function panelHubSuperadminRoutes(role: UserRole): PanelSitemapEntry[] {

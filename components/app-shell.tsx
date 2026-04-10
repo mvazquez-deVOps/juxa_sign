@@ -1,31 +1,14 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import {
-  FileSignature,
-  Building2,
-  Users,
-  FileText,
-  LayoutDashboard,
-  Settings,
-  Send,
-  Map,
-  TrendingUp,
-  UserPlus,
-  Layers,
-  KeyRound,
-  Shield,
-  Coins,
-  CircleHelp,
-  FlaskConical,
-} from "lucide-react";
+import { FileSignature, Building2, Users, FileText, LayoutDashboard, Settings, Send, Map, TrendingUp, UserPlus, Layers, KeyRound, Shield, Coins, CircleHelp, FlaskConical, } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SidebarSessionBlock, type SessionUserChip } from "@/components/sidebar-session";
 import { ThemeToggle } from "@/components/theme-toggle";
+
 const navCore = [
   { href: "/", label: "Inicio", icon: LayoutDashboard },
   { href: "/empresas", label: "Clientes", icon: Building2 },
   { href: "/ayuda", label: "Ayuda", icon: CircleHelp },
-  { href: "/pruebas-panel", label: "Pruebas y mapa", icon: FlaskConical },
   { href: "/firmantes", label: "Firmantes", icon: Users },
   { href: "/documentos", label: "Documentos", icon: FileText },
   { href: "/envios", label: "Envíos", icon: Send },
@@ -36,13 +19,10 @@ const navCore = [
   { href: "/configuracion/equipo", label: "Equipo", icon: UserPlus },
 ];
 
-const devRoadmapNavItem = { href: "/hoja-de-ruta-devs", label: "Hoja de ruta (devs)", icon: Map };
-
 const navConsumerFolio = [
   { href: "/", label: "Inicio", icon: LayoutDashboard },
   { href: "/empresas", label: "Clientes", icon: Building2 },
   { href: "/ayuda", label: "Ayuda", icon: CircleHelp },
-  { href: "/pruebas-panel", label: "Pruebas y mapa", icon: FlaskConical },
   { href: "/firmantes", label: "Firmantes", icon: Users },
   { href: "/documentos", label: "Documentos", icon: FileText },
   { href: "/envios", label: "Envíos", icon: Send },
@@ -56,7 +36,6 @@ const navPanelReadOnly = [
   { href: "/", label: "Inicio", icon: LayoutDashboard },
   { href: "/empresas", label: "Clientes", icon: Building2 },
   { href: "/ayuda", label: "Ayuda", icon: CircleHelp },
-  { href: "/pruebas-panel", label: "Pruebas y mapa", icon: FlaskConical },
   { href: "/firmantes", label: "Firmantes", icon: Users },
   { href: "/documentos", label: "Documentos", icon: FileText },
   { href: "/envios", label: "Envíos", icon: Send },
@@ -97,14 +76,13 @@ export function AppShell({
   const adminOnlyNav = showAdminNav
     ? [
         { href: "/configuracion/api-keys", label: "API keys", icon: KeyRound },
-        { href: "/admin/proyecto", label: "Avance del proyecto", icon: TrendingUp },
       ]
     : [];
   const nav = consumerFolioNav
     ? [...navConsumerFolio, ...platformNav]
     : panelReadOnlyNav
       ? [...navPanelReadOnly, ...platformNav]
-      : [...navCore, ...(showAdminNav ? [devRoadmapNavItem] : []), ...platformNav, ...adminOnlyNav];
+      : [...navCore, ...platformNav, ...adminOnlyNav];
 
   return (
     <div className="min-h-screen bg-background">
