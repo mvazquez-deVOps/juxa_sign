@@ -19,7 +19,7 @@ export default async function EmpresasPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Clientes</h1>
           <p className="text-muted-foreground">
-            Empresas y personas físicas registradas en el proveedor (Id. de cliente), sincronizadas en Juxa Sign.
+            Empresas y personas físicas registradas en el proveedor, sincronizadas en Juxa Sign.
           </p>
         </div>
         {allowWrite ? (
@@ -35,10 +35,6 @@ export default async function EmpresasPage() {
       <Card>
         <CardHeader>
           <CardTitle>Directorio</CardTitle>
-          <CardDescription>
-            Cada fila es un cliente (empresa o persona física). El Id. de cliente del proveedor enlaza firmantes y
-            documentos.
-          </CardDescription>
         </CardHeader>
         <CardContent>
           {companies.length === 0 ? (

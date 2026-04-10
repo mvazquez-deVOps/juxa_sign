@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
 import { runPanelBatchSend } from "@/app/actions/batch";
 import type { BatchPickerRow } from "@/lib/data/repository";
 import { Badge } from "@/components/ui/badge";
@@ -12,11 +11,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-const cuidRe = /^c[a-z0-9]{24,}$/i;
 const MAX_BATCH = 25;
 
 type JobRow = {
@@ -49,12 +46,10 @@ export function LotesClient({
   initialJobs: JobRow[];
   documents: BatchPickerRow[];
 }) {
-  const [text, setText] = useState("");
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [search, setSearch] = useState("");
   const [companyFilter, setCompanyFilter] = useState("");
   const [onlyReady, setOnlyReady] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [expandedJobs, setExpandedJobs] = useState<Set<string>>(() => new Set());
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -114,16 +109,9 @@ export function LotesClient({
     setSelected(new Set());
   }
 
-  function mergeIdsFromPickerAndText(ids: string[]): string[] {
-    const fromPicker = [...selected];
-    const fromText = ids;
-    const merged = [...new Set([...fromPicker, ...fromText])];
-    return merged.slice(0, MAX_BATCH);
-  }
-
   async function runBatch(documentIds: string[]) {
     if (documentIds.length === 0) {
-      toast.error("Selecciona documentos o pega ids válidos.");
+      toast.error("Selecciona al menos un documento.");
       return;
     }
     if (documentIds.length > MAX_BATCH) {
@@ -142,7 +130,6 @@ export function LotesClient({
           });
         }
       }
-      setText("");
       clearSelection();
       router.refresh();
     });
@@ -150,17 +137,6 @@ export function LotesClient({
 
   function onRunFromPicker() {
     void runBatch([...selected]);
-  }
-
-  function onRunFromTextarea() {
-    const ids = text
-      .split(/[\s,]+/)
-      .map((s) => s.trim())
-      .filter(Boolean)
-      .filter((id) => cuidRe.test(id));
-    const uniq = [...new Set(ids)];
-    const merged = mergeIdsFromPickerAndText(uniq);
-    void runBatch(merged);
   }
 
   function toggleJobExpand(jobId: string) {
@@ -179,7 +155,7 @@ export function LotesClient({
           <CardHeader>
             <CardTitle>Elegir documentos</CardTitle>
             <CardDescription>
-              Marca hasta {MAX_BATCH} documentos listos para envío (mismas reglas que &quot;Enviar a firmar&quot;). Usa
+              Marca hasta {MAX_BATCH} expedientes listos para envío. Usa
               filtros para acotar la lista.
             </CardDescription>
           </CardHeader>
@@ -191,7 +167,7 @@ export function LotesClient({
                   id="lotes-search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Nombre, empresa o id…"
+                  placeholder="Nombre o empresa…"
                 />
               </div>
               <div className="w-full space-y-2 sm:w-48">
@@ -272,7 +248,7 @@ export function LotesClient({
                             href={`/documentos/${d.id}`}
                             className="mt-1 inline-block text-xs text-primary underline-offset-2 hover:underline"
                           >
-                            Abrir documento
+                            Abrir expediente
                           </Link>
                         </div>
                       </li>
@@ -281,47 +257,17 @@ export function LotesClient({
                 </ul>
               )}
             </div>
-            <Button type="button" disabled={pending || selected.size === 0} onClick={() => void onRunFromPicker()}>
-              {pending ? "Procesando…" : "Ejecutar lote con selección"}
+            <Button className="w-full" type="button" disabled={pending || selected.size === 0} onClick={() => void onRunFromPicker()}>
+              {pending ? "Procesando…" : "Enviar Lote Seleccionado"}
             </Button>
-
-            <div className="border-t pt-4">
-              <button
-                type="button"
-                className="flex w-full items-center gap-2 text-left text-sm font-medium text-muted-foreground hover:text-foreground"
-                onClick={() => setShowAdvanced((v) => !v)}
-              >
-                {showAdvanced ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                Pegar ids (avanzado)
-              </button>
-              {showAdvanced ? (
-                <div className="mt-3 space-y-3">
-                  <p className="text-xs text-muted-foreground">
-                    Opcional: añade cuids al lote. Si también hay selección en la tabla, se unen (máx. {MAX_BATCH}).
-                  </p>
-                  <Label htmlFor="ids">Ids de documento (cuid)</Label>
-                  <Textarea
-                    id="ids"
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    placeholder={"clxxxxxxxxxxxxxxxxxxxxx\nclyyyyyyyyyyyyyyyyyyyyy"}
-                    rows={5}
-                    className="font-mono text-sm"
-                  />
-                  <Button type="button" variant="outline" disabled={pending} onClick={() => void onRunFromTextarea()}>
-                    Ejecutar con ids pegados
-                  </Button>
-                </div>
-              ) : null}
-            </div>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Historial reciente</CardTitle>
-          <CardDescription>Jobs de envío en lote de esta organización (panel y API).</CardDescription>
+          <CardTitle>Historial de Envíos</CardTitle>
+          <CardDescription>Resumen de envíos masivos procesados.</CardDescription>
         </CardHeader>
         <CardContent>
           {initialJobs.length === 0 ? (

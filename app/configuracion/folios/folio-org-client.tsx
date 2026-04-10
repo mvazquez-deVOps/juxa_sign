@@ -29,7 +29,7 @@ export function FolioOrgGrantForm({
       <p className="text-sm text-muted-foreground">
         Los movimientos quedan registrados como transferencia de administrador. Para precios del catálogo global, revisa{" "}
         <Link href="/folios/planes" className="font-medium text-primary underline-offset-4 hover:underline">
-          Planes de folios
+          Planes
         </Link>
         .
       </p>

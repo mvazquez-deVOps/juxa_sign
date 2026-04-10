@@ -86,13 +86,9 @@ export function CredentialsLoginForm() {
         {pending ? "Entrando…" : "Acceder"}
       </Button>
       <p className={cn("text-center text-xs", juxaLoginMutedClass)}>
-        ¿Sin cuenta?{" "}
+        ¿Sin cuenta?{"    "}
         <Link href="/registro" className={juxaLoginLinkClass}>
           Crear organización
-        </Link>
-        {" · "}
-        <Link href="/" className={juxaLoginLinkClass}>
-          Inicio
         </Link>
       </p>
     </form>

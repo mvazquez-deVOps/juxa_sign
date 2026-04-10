@@ -71,10 +71,9 @@ export function TeamEquipoClient({
       {isAdmin ? (
         <Card>
           <CardHeader>
-            <CardTitle>Límite de usuarios (opcional)</CardTitle>
+            <CardTitle>Límite de usuarios</CardTitle>
             <CardDescription>
-              Si defines un máximo, no podrás crear invitaciones ni aceptar nuevas cuentas por encima de ese número
-              (usuarios actuales + invitaciones pendientes).
+              Define un máximo de colaboradores para llevar un control sobre el acceso al panel de tu organización.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -128,9 +127,7 @@ export function TeamEquipoClient({
         <CardHeader>
           <CardTitle>Invitaciones pendientes</CardTitle>
             <CardDescription>
-            Los enlaces expiran en 7 días. Si el servidor tiene{" "}
-            <span className="font-medium">MAIL_PROVIDER</span> en resend o smtp, el invitado recibe el enlace por correo;
-            en cualquier caso puedes copiarlo aquí.
+            Los enlaces expiran en 7 días. Se enviará a tus invitados un correo con el enlace y las instrucciones para unirse al equipo.
             </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

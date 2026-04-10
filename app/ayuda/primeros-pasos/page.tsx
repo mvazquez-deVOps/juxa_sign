@@ -53,7 +53,7 @@ const steps = [
     body: (
       <>
         Usa <strong>Enviar a firmar</strong> en la ficha del documento: revisa asignación, orden si aplica y confirma el
-        envío. Después puedes seguir el estado en <Link href="/envios">Envíos</Link>.
+        envío. Después puedes seguir el estado en <Link href="/envios">Bandeja de envíos</Link>.
       </>
     ),
   },
@@ -62,8 +62,8 @@ const steps = [
     title: "Webhooks y configuración (administradores)",
     body: (
       <>
-        Quien administre la organización puede revisar <Link href="/configuracion">Configuración</Link> para webhooks y
-        ajustes del proveedor. No expongas credenciales en el navegador: todo sensible vive en el servidor.
+        Quien administre la organización puede revisar <Link href="/configuracion">Configuración</Link> para
+        ajustes del equipo.
       </>
     ),
   },
@@ -107,7 +107,7 @@ export default function AyudaPrimerosPasosPage() {
             Mis folios
           </Link>{" "}
           y, si aplica, <Link href="/folios/planes" className="font-medium text-primary underline">
-            Planes de folios
+            Planes
           </Link>
           .
         </p>
