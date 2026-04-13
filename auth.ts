@@ -1,7 +1,8 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import type { UserRole } from "@prisma/client";
-import { dbUserFindUniqueWithOrg } from "@/lib/data/repository";
+import { DEMO_SYNTHETIC_USER_ID } from "@/lib/demo-session-ids";
+import { dbUserFindUniqueWithOrg, dbUserSessionFieldsById } from "@/lib/data/repository";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
@@ -45,11 +46,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return token;
     },
-    session({ session, token }) {
+    async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id as string;
+        const id = typeof token.id === "string" ? token.id : "";
+        session.user.id = id;
         session.user.role = token.role as UserRole;
         session.user.organizationId = token.organizationId as string;
+
+        if (id && id !== DEMO_SYNTHETIC_USER_ID) {
+          const row = await dbUserSessionFieldsById(id);
+          if (row) {
+            session.user.organizationId = row.organizationId;
+            session.user.role = row.role;
+          }
+        }
       }
       return session;
     },

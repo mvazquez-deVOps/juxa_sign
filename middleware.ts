@@ -41,8 +41,8 @@ async function demoPasswordGate(request: NextRequest): Promise<NextResponse> {
     const res = NextResponse.next();
     res.cookies.set(DEMO_SESSION_COOKIE, "", { path: "/", maxAge: 0 });
     return res;
-  }
 
+  }
   if (isStatic(pathname) || isPublicMockSigningPdf(pathname)) {
     return NextResponse.next();
   }
@@ -94,6 +94,7 @@ async function demoPasswordGate(request: NextRequest): Promise<NextResponse> {
 }
 
 const withNextAuth = auth((req) => {
+  // dentro de withNextAuth = auth((req) => { ... })
   const path = req.nextUrl.pathname;
   const isLogin = path === "/login" || path.startsWith("/login/");
   const isRegister = path === "/registro" || path.startsWith("/registro/");
@@ -107,7 +108,10 @@ const withNextAuth = auth((req) => {
     path === "/icon.svg" ||
     path.endsWith(".svg");
 
-  if (isStaticPath || isPublicMockSigningPdf(path) || isAuthApi || isWebhook || isPublicApiV1) {
+  // NUEVO: permitir debug APIs SOLO en development
+  const isDebugApi = path.startsWith("/api/debug") && process.env.NODE_ENV !== "production";
+
+  if (isStaticPath || isPublicMockSigningPdf(path) || isAuthApi || isWebhook || isPublicApiV1 || isDebugApi) {
     return NextResponse.next();
   }
 

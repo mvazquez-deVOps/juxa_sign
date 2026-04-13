@@ -1,0 +1,1483 @@
+openapi: 3.0.3
+info:
+  title: DIGID — API de Firma Electrónica
+  description: |
+    Documentación OpenAPI de los endpoints del proveedor DIGID, consumidos por Juxa Sign.
+
+    ## Autenticación
+
+    Existen dos estilos de autenticación según el endpoint:
+
+    - **Bearer (API moderna — `/api/ws`):** header `Authorization: Bearer <token>`.
+      Cuerpo JSON o multipart/form-data según el endpoint.
+    - **Legacy (`/wsdigid3/public/index.php`):** credenciales embebidas en el body JSON
+      (`Usuario`, `Clave`, `Token`, `Modo`).
+
+    ## Entornos
+
+    | Tipo | Producción | Sandbox |
+    |------|-----------|---------|
+    | Bearer + multipart | `https://digidmexico.com.mx/api/ws` | `https://dev.digidmexico.com.mx/api/ws` |
+    | Legacy | `https://digidmexico.com.mx/wsdigid3/public/index.php` | `https://dev.digidmexico.com.mx/wsdigid3/public/index.php` |
+
+    ## Notas Juxa Sign
+
+    - `FolioPremium` y `kyc` se serializan como `0/1` por defecto.
+      Con `DIGID_FLAG_SERIALIZATION=boolean` se envían como `true/false`.
+    - `Modo`: `T` = pruebas, `P` = producción.
+  version: "1.0.0"
+  contact:
+    name: Juxa Sign
+    url: https://github.com/juxa-sign
+
+servers:
+  - url: https://digidmexico.com.mx
+    description: Producción
+  - url: https://dev.digidmexico.com.mx
+    description: Sandbox (pruebas)
+
+tags:
+  - name: Empresas
+    description: Registro de clientes (empresas)
+  - name: Firmantes
+    description: Alta, actualización y consulta de firmantes
+  - name: Documentos
+    description: Creación, actualización y gestión de documentos
+  - name: Firma
+    description: Envío a firma, URLs de firma, reenvío
+  - name: Plantillas
+    description: CRUD de plantillas reutilizables
+  - name: Configuración
+    description: Webhooks, KYC, constancias NOM-151
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: "Token DIGID en header Authorization: Bearer <token>"
+
+  schemas:
+    # ── Credenciales Legacy ──
+    LegacyCredentials:
+      type: object
+      required: [Usuario, Clave, Token, Modo]
+      properties:
+        Usuario:
+          type: string
+          maxLength: 15
+          example: demo
+          description: Usuario del web service DIGID
+        Clave:
+          type: string
+          maxLength: 15
+          example: demo123
+          description: Clave del web service DIGID
+        Token:
+          type: string
+          maxLength: 32
+          example: ABCD1234EFGH5678IJKL9012MNOP3456
+          description: Token del usuario
+        Modo:
+          type: string
+          enum: [T, P]
+          example: T
+          description: "`T` = Test / `P` = Producción"
+
+    # ── Respuesta Legacy genérica ──
+    LegacyResponse:
+      type: object
+      properties:
+        Codigo:
+          type: integer
+          example: 200
+        ExtraInfo:
+          type: object
+          properties:
+            Id:
+              type: string
+              example: "1172"
+            Descripcion:
+              type: string
+              example: Ok
+            URL:
+              type: string
+              format: uri
+
+    # ── Respuesta Bearer genérica ──
+    BearerSuccessResponse:
+      type: object
+      properties:
+        Success:
+          type: boolean
+          example: true
+        Message:
+          type: string
+        Data:
+          type: object
+
+    BearerErrorResponse:
+      type: object
+      properties:
+        Success:
+          type: boolean
+          example: false
+        Message:
+          type: string
+          example: Error de validación
+
+    # ── 1. Registrar Empresa ──
+    RegistrarEmpresaRequest:
+      allOf:
+        - $ref: '#/components/schemas/LegacyCredentials'
+        - type: object
+          required: [RazonSocial, RFC, Email]
+          properties:
+            RazonSocial:
+              type: string
+              example: ACME SA de CV
+            RFC:
+              type: string
+              example: XAXX010101000
+            Email:
+              type: string
+              format: email
+              example: contacto@acme.com
+
+    # ── 2. Firmantes ──
+    SaveSignatoryRequest:
+      type: object
+      required: [IdClient, Name]
+      properties:
+        Id:
+          type: integer
+          description: Solo para actualizar un firmante existente
+          example: 4419
+        IdClient:
+          type: integer
+          example: 1172
+          description: Id del cliente (empresa)
+        Name:
+          type: string
+          example: DIGID MEXICO
+        Email:
+          type: string
+          format: email
+          example: mario@example.com
+          description: Obligatorio si no se envía Phone
+        Phone:
+          type: string
+          example: "9999039195"
+          description: Obligatorio si no se envía Email
+        Rfc:
+          type: string
+          example: XAXX010101000
+        IsRepLegal:
+          type: boolean
+          example: false
+        AutoSign:
+          type: boolean
+          example: false
+
+    SaveSignatoryResponse:
+      type: object
+      properties:
+        Success:
+          type: boolean
+          example: true
+        Data:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 4419
+            name:
+              type: string
+              example: DIGID MEXICO - XAXX010101000
+            RL:
+              type: integer
+              example: 1
+            newSignatory:
+              type: boolean
+              example: false
+        Message:
+          type: string
+
+    # ── 3/4. Documentos ──
+    CreateDocResponse:
+      type: object
+      properties:
+        Success:
+          type: boolean
+          example: true
+        Data:
+          type: object
+          properties:
+            IdDocumento:
+              type: integer
+              example: 17388
+            UrlDocumento:
+              type: string
+              format: uri
+              example: https://digidmexico.com.mx/documents/verarchivo/17388
+        Message:
+          type: string
+
+    # ── 5. Asignar firmantes ──
+    AssignSignatoriesRequest:
+      type: object
+      required: [IdClient, IdDocument, signatories]
+      properties:
+        IdClient:
+          type: integer
+          example: 1172
+        IdDocument:
+          type: integer
+          example: 17388
+        signatories:
+          type: array
+          items:
+            type: object
+            required: [id, kyc]
+            properties:
+              id:
+                type: integer
+                example: 4419
+              kyc:
+                oneOf:
+                  - type: integer
+                    enum: [0, 1]
+                  - type: boolean
+                description: "KYC requerido. Juxa Sign envía `0/1` por defecto; `true/false` con DIGID_FLAG_SERIALIZATION=boolean"
+                example: 0
+
+    AssignSignatoriesResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Firmantes agregados correctamente al documento.
+
+    # ── 6. Desasignar ──
+    DesasignarFirmanteRequest:
+      allOf:
+        - $ref: '#/components/schemas/LegacyCredentials'
+        - type: object
+          required: [IdCliente, IdDocumento, IdFirmante]
+          properties:
+            IdCliente:
+              type: integer
+              example: 1172
+            IdDocumento:
+              type: integer
+              example: 17388
+            IdFirmante:
+              type: integer
+              example: 4419
+
+    # ── 7. URL firma doc (legacy) ──
+    UrlFirmaDocRequest:
+      allOf:
+        - $ref: '#/components/schemas/LegacyCredentials'
+        - type: object
+          required: [IdCliente, IdDocumento]
+          properties:
+            IdCliente:
+              type: integer
+              example: 1172
+            IdDocumento:
+              type: integer
+              example: 17388
+
+    UrlFirmaDocResponse:
+      type: object
+      properties:
+        Codigo:
+          type: integer
+          example: 200
+        ExtraInfo:
+          type: object
+          properties:
+            Clave:
+              type: string
+              example: "20806"
+            nombredocumento:
+              type: string
+              example: DIGID Prueba de firma
+            URL:
+              type: string
+              format: uri
+              example: https://digidmexico.com.mx/firma_pagina/...
+
+    # ── 8. Enviar a firmar ──
+    SignatureCoordinate:
+      type: object
+      required: [x, y, firmante, nombre, pagina, altoPagina, AnchoPagina, xDoc, yDoc, position]
+      properties:
+        x:
+          type: number
+          example: 200
+          description: Coordenada horizontal (px) desde esquina superior izquierda
+        y:
+          type: number
+          example: 225
+          description: Coordenada vertical (px) desde esquina superior izquierda
+        firmante:
+          type: integer
+          example: 4419
+          description: Id numérico del firmante
+        nombre:
+          type: string
+          example: DIGID MEXICO
+        pagina:
+          type: integer
+          minimum: 1
+          example: 1
+          description: Página (1-indexado)
+        altoPagina:
+          type: number
+          example: 1048
+          description: Altura de página en píxeles
+        AnchoPagina:
+          type: number
+          example: 612
+          description: Ancho de página en píxeles
+        xDoc:
+          type: number
+          example: 200
+          description: Mismo valor que x
+        yDoc:
+          type: number
+          example: 225
+          description: Mismo valor que y
+        position:
+          type: integer
+          example: 0
+
+    SendDocRequest:
+      type: object
+      required: [IdDoc, IdClient, FolioPremium, TypeSign, SignatureCoordinates]
+      properties:
+        IdDoc:
+          type: integer
+          example: 17388
+        IdClient:
+          type: integer
+          example: 1172
+        FolioPremium:
+          oneOf:
+            - type: integer
+              enum: [0, 1]
+            - type: boolean
+          description: "Certificación NOM-151. `0` = sencillo, `1` = premium"
+          example: 0
+        TypeSign:
+          type: integer
+          enum: [1, 2]
+          description: "`1` = electrónica, `2` = autógrafa"
+          example: 2
+        SignatureCoordinates:
+          type: string
+          description: Arreglo JSON serializado como string con las coordenadas de firma
+          example: '[{"x":200,"y":225,"firmante":4419,"nombre":"DIGID MEXICO","pagina":1,"altoPagina":1048,"AnchoPagina":612,"xDoc":200,"yDoc":225,"position":0}]'
+        Remider:
+          type: integer
+          enum: [1, 2, 3]
+          description: "Recordatorio: `1` = 24h, `2` = 48h, `3` = 72h"
+          example: 1
+        ColorSign:
+          type: string
+          pattern: '^#[0-9A-Fa-f]{6}$'
+          example: "#000000"
+          description: Color de firma en hex
+        Observer:
+          type: string
+          format: email
+          description: Email del observador (opcional)
+        ObserverName:
+          type: string
+          description: Nombre del observador (obligatorio si se indica Observer)
+        ObserverPhone:
+          type: string
+          description: Teléfono del observador
+        ObserverAprove:
+          type: boolean
+          description: Aprobación del observador
+
+    SendDocResponse:
+      type: object
+      properties:
+        Success:
+          type: boolean
+          example: true
+        Message:
+          type: string
+
+    # ── 9. Info documento ──
+    InfoDocumentoRequest:
+      allOf:
+        - $ref: '#/components/schemas/LegacyCredentials'
+        - type: object
+          required: [IdCliente, IdDocumento]
+          properties:
+            IdCliente:
+              type: integer
+              example: 1172
+            IdDocumento:
+              type: integer
+              example: 17388
+
+    InfoDocumentoResponse:
+      type: object
+      properties:
+        Codigo:
+          type: integer
+          example: 200
+        ExtraInfo:
+          type: object
+          properties:
+            nombre:
+              type: string
+              example: CONTRATO
+            estado:
+              type: string
+              example: En Proceso de Firma
+            tipofirma:
+              type: string
+              example: Autógrafa
+            tipofolio:
+              type: string
+              example: Sencillo
+            URLDocumento:
+              type: string
+              format: uri
+              example: https://digidmexico.com.mx/documents/verarchivo/17388
+            firmantes:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    example: "4419"
+                  nombre:
+                    type: string
+                    example: DIGID MEXICO
+                  estatus:
+                    type: string
+                    example: Documento Firmado
+
+    # ── 10. Cancelar documento ──
+    CancelarDocumentoRequest:
+      allOf:
+        - $ref: '#/components/schemas/LegacyCredentials'
+        - type: object
+          required: [IdCliente, IdDocumento]
+          properties:
+            IdCliente:
+              type: integer
+              example: 1172
+            IdDocumento:
+              type: integer
+              example: 17388
+
+    # ── 11. URL firmante ──
+    UrlFirmanteRequest:
+      allOf:
+        - $ref: '#/components/schemas/LegacyCredentials'
+        - type: object
+          required: [IdCliente, IdDocumento, IdFirmante]
+          properties:
+            IdCliente:
+              type: integer
+              example: 1172
+            IdDocumento:
+              type: integer
+              example: 17388
+            IdFirmante:
+              type: integer
+              example: 4419
+
+    UrlFirmanteResponse:
+      type: object
+      properties:
+        Codigo:
+          type: integer
+          example: 200
+        ExtraInfo:
+          type: object
+          properties:
+            URL:
+              type: string
+              format: uri
+              example: https://digidmexico.com.mx/firma_autografa/...
+
+    # ── 12. Reenviar documento ──
+    ReenviarDocumentoRequest:
+      allOf:
+        - $ref: '#/components/schemas/LegacyCredentials'
+        - type: object
+          required: [IdCliente, IdDocumento, IdFirmante]
+          properties:
+            IdCliente:
+              type: integer
+              example: 1172
+            IdDocumento:
+              type: integer
+              example: 17388
+            IdFirmante:
+              type: integer
+              example: 4419
+
+    # ── 13. Crear plantilla ──
+    CreateTemplateResponse:
+      type: object
+      properties:
+        Success:
+          type: boolean
+          example: true
+        IdTemplate:
+          type: integer
+          example: 667
+        Variables:
+          type: array
+          items:
+            type: object
+            additionalProperties:
+              type: string
+          example:
+            - P1: P1
+            - p2_COMPRADOR: p2_COMPRADOR
+            - p3_NUMERO: p3_NUMERO
+        Preview:
+          type: string
+          format: uri
+          example: https://digidmexico.com.mx/templates/verarchivo/667
+
+    # ── 15. Detalle plantilla ──
+    GetTemplateRequest:
+      type: object
+      required: [IdClient, IdTemplate]
+      properties:
+        IdClient:
+          type: integer
+          example: 1172
+        IdTemplate:
+          type: integer
+          example: 668
+
+    GetTemplateResponse:
+      type: object
+      properties:
+        Success:
+          type: boolean
+          example: true
+        Templates:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                example: 668
+              nombre:
+                type: string
+                example: Plantilla Demo UPdate
+              parametros:
+                type: array
+                items:
+                  type: object
+                  additionalProperties:
+                    type: string
+              fecha_alta:
+                type: string
+                example: "02-12-2025"
+              anexos:
+                type: boolean
+                example: false
+              preview:
+                type: string
+                format: uri
+
+    # ── 16. Webhook ──
+    WebhookRequest:
+      type: object
+      required: [IdClient, Url]
+      properties:
+        IdClient:
+          type: integer
+          example: 11
+        Url:
+          type: string
+          format: uri
+          example: https://miapp.com/webhooks/digid
+
+    WebhookResponse:
+      type: object
+      properties:
+        Success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: WebHook URL agregada correctamente
+
+    # ── 17. KYC on/off ──
+    KycOnOffRequest:
+      type: object
+      required: [IdClient, IdDocument, IdSignatory, kyc]
+      properties:
+        IdClient:
+          type: integer
+          example: 1172
+        IdDocument:
+          type: integer
+          example: 17388
+        IdSignatory:
+          type: integer
+          example: 4419
+        kyc:
+          type: boolean
+          example: true
+
+paths:
+  # ═══════════════════════════════════════════════════════════════
+  # 1. Registrar empresa
+  # ═══════════════════════════════════════════════════════════════
+  /wsdigid3/public/index.php/RegistrarEmpresa:
+    post:
+      tags: [Empresas]
+      summary: 1. Registrar empresa (cliente)
+      description: Registra un cliente nuevo en DIGID. Si ya existe, devuelve el Id existente con código 400.
+      operationId: registrarEmpresa
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrarEmpresaRequest'
+            example:
+              Usuario: demo
+              Clave: demo123
+              Token: ABCD1234EFGH5678IJKL9012MNOP3456
+              RazonSocial: ACME SA de CV
+              RFC: XAXX010101000
+              Email: contacto@acme.com
+              Modo: T
+      responses:
+        "200":
+          description: Resultado de la operación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LegacyResponse'
+              examples:
+                alta_exitosa:
+                  summary: Alta exitosa (Codigo 200)
+                  value:
+                    Codigo: 200
+                    ExtraInfo:
+                      Id: "1172"
+                credenciales_invalidas:
+                  summary: Credenciales inválidas (Codigo 300)
+                  value:
+                    Codigo: 300
+                    ExtraInfo:
+                      Descripcion: Credenciales de Acceso incorrectas
+                empresa_existente:
+                  summary: Empresa ya registrada (Codigo 400)
+                  value:
+                    Codigo: 400
+                    ExtraInfo:
+                      Descripcion: Ya se ha registrado esta empresa
+                      Id: "1172"
+
+  # ═══════════════════════════════════════════════════════════════
+  # 2. Firmantes (crear / actualizar)
+  # ═══════════════════════════════════════════════════════════════
+  /api/ws/signatory/save_signatory:
+    post:
+      tags: [Firmantes]
+      summary: 2. Crear o actualizar firmante
+      description: |
+        Crea un firmante nuevo o actualiza uno existente.
+        - **Crear:** omitir `Id`. Requiere `Email` o `Phone` (o ambos).
+        - **Actualizar:** incluir `Id`. Enviar **todos** los campos (se sobrescriben).
+        - Si ya existe uno con el mismo Email/Phone en el mismo IdClient, no duplica.
+      operationId: saveSignatory
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveSignatoryRequest'
+            examples:
+              crear:
+                summary: Crear firmante
+                value:
+                  IdClient: 1172
+                  Name: DIGID MEXICO
+                  Phone: "9999039195"
+                  IsRepLegal: false
+              actualizar:
+                summary: Actualizar firmante
+                value:
+                  Id: 4419
+                  IdClient: 1172
+                  Name: DIGID MEXICO
+                  Email: mario@example.com
+                  Phone: "9999039195"
+                  Rfc: XAXX010101000
+                  IsRepLegal: false
+                  AutoSign: false
+      responses:
+        "200":
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaveSignatoryResponse'
+              examples:
+                creado:
+                  summary: Firmante creado
+                  value:
+                    Success: true
+                    Data:
+                      id: 4419
+                      name: DIGID MEXICO - Sin RFC
+                existente:
+                  summary: Firmante existente (no duplica)
+                  value:
+                    Success: true
+                    Data:
+                      id: 4419
+                      name: DIGID MEXICO
+                      RL: 1
+                      newSignatory: false
+                error_validacion:
+                  summary: Error de validación
+                  value:
+                    Success: false
+                    Message: "El correo es obligatorio si no se proporciona teléfono. (and 1 more error)"
+                id_cliente_incorrecto:
+                  summary: IdCliente no pertenece al distribuidor
+                  value:
+                    Success: false
+                    Message: "IdCliente no pertenece al distribuidor, verifique sus datos"
+        "401":
+          description: Token inválido
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Token inválido, verifique sus datos"
+                  success:
+                    type: boolean
+                    example: false
+
+  # ═══════════════════════════════════════════════════════════════
+  # 3. Crear documento
+  # ═══════════════════════════════════════════════════════════════
+  /api/ws/create_doc:
+    post:
+      tags: [Documentos]
+      summary: 3. Crear documento
+      description: |
+        Crea un documento nuevo para enviar a firmar.
+        - Con archivo: `UseTemplate=false`, adjuntar `FileDoc` (PDF o docx).
+        - Con plantilla: `UseTemplate=true`, indicar `IdTemplate` y `Parametros`.
+      operationId: createDoc
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [NameDoc, IdClient, UseTemplate]
+              properties:
+                NameDoc:
+                  type: string
+                  maxLength: 100
+                  example: Contrato servicio
+                IdClient:
+                  type: integer
+                  example: 1172
+                UseTemplate:
+                  type: boolean
+                  example: false
+                FileDoc:
+                  type: string
+                  format: binary
+                  description: PDF o docx (obligatorio si UseTemplate=false)
+                IdTemplate:
+                  type: integer
+                  description: Obligatorio si UseTemplate=true
+                Anexos:
+                  type: string
+                  format: binary
+                  description: PDFs adicionales
+                Parametros:
+                  type: string
+                  description: JSON serializado con parámetros de plantilla
+          application/json:
+            schema:
+              type: object
+              required: [NameDoc, IdClient, UseTemplate]
+              properties:
+                NameDoc:
+                  type: string
+                  maxLength: 100
+                IdClient:
+                  type: integer
+                UseTemplate:
+                  type: boolean
+                IdTemplate:
+                  type: integer
+                Parametros:
+                  type: object
+            example:
+              NameDoc: Contrato servicio
+              IdClient: 1172
+              UseTemplate: true
+              IdTemplate: 55
+              Parametros:
+                cliente: ACME
+                monto: "$10,000"
+      responses:
+        "200":
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateDocResponse'
+              examples:
+                creado:
+                  value:
+                    Success: true
+                    Data:
+                      IdDocumento: 17388
+                      UrlDocumento: https://digidmexico.com.mx/documents/verarchivo/17388
+                error:
+                  value:
+                    Success: false
+                    Message: "Es requerido un documento .pdf o .docx, para poder continuar"
+
+  # ═══════════════════════════════════════════════════════════════
+  # 4. Actualizar documento
+  # ═══════════════════════════════════════════════════════════════
+  /api/ws/update_doc:
+    post:
+      tags: [Documentos]
+      summary: 4. Actualizar documento
+      description: Actualiza un documento existente. Requiere `IdDoc`.
+      operationId: updateDoc
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [NameDoc, IdClient, UseTemplate, IdDoc]
+              properties:
+                IdDoc:
+                  type: integer
+                  example: 17388
+                NameDoc:
+                  type: string
+                  maxLength: 100
+                IdClient:
+                  type: integer
+                UseTemplate:
+                  type: boolean
+                FileDoc:
+                  type: string
+                  format: binary
+                  description: Solo PDF (obligatorio si UseTemplate=false)
+                IdTemplate:
+                  type: integer
+                Anexos:
+                  type: string
+                  format: binary
+                Parametros:
+                  type: string
+          application/json:
+            schema:
+              type: object
+              required: [IdDoc, NameDoc, IdClient, UseTemplate]
+              properties:
+                IdDoc:
+                  type: integer
+                NameDoc:
+                  type: string
+                IdClient:
+                  type: integer
+                UseTemplate:
+                  type: boolean
+            example:
+              IdDoc: 17388
+              NameDoc: Contrato servicio v2
+              IdClient: 1172
+              UseTemplate: false
+      responses:
+        "200":
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateDocResponse'
+
+  # ═══════════════════════════════════════════════════════════════
+  # 5. Asignar firmantes a documento
+  # ═══════════════════════════════════════════════════════════════
+  /api/ws/asignado/add_assigned_doc:
+    post:
+      tags: [Firma]
+      summary: 5. Asignar firmantes a documento
+      description: Asigna firmantes al documento, **reemplazando** la asignación completa.
+      operationId: addAssignedDoc
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignSignatoriesRequest'
+            example:
+              IdClient: 1172
+              IdDocument: 17388
+              signatories:
+                - id: 4419
+                  kyc: 0
+                - id: 4420
+                  kyc: 0
+      responses:
+        "200":
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssignSignatoriesResponse'
+              examples:
+                exito:
+                  value:
+                    success: true
+                    message: Firmantes agregados correctamente al documento.
+                error:
+                  value:
+                    success: false
+                    message: Documento no existe
+
+  # ═══════════════════════════════════════════════════════════════
+  # 6. Desasignar firmante
+  # ═══════════════════════════════════════════════════════════════
+  /wsdigid3/public/index.php/dDesAsignarFirmante:
+    post:
+      tags: [Firma]
+      summary: 6. Desasignar firmante de documento
+      description: Elimina la asignación de un firmante del documento.
+      operationId: desasignarFirmante
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DesasignarFirmanteRequest'
+            example:
+              Usuario: demo
+              Clave: demo123
+              Token: ABCD1234EFGH5678IJKL9012MNOP3456
+              IdCliente: 1172
+              IdDocumento: 17388
+              IdFirmante: 4419
+              Modo: P
+      responses:
+        "200":
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LegacyResponse'
+              examples:
+                desasignado:
+                  value:
+                    Codigo: 200
+                    ExtraInfo:
+                      Descripcion: Ok
+                error:
+                  value:
+                    Codigo: 500
+                    ExtraInfo:
+                      Descripcion: No existe
+
+  # ═══════════════════════════════════════════════════════════════
+  # 7. URL firma documento
+  # ═══════════════════════════════════════════════════════════════
+  /wsdigid3/public/index.php/dURLFirmaDoc:
+    post:
+      tags: [Firma]
+      summary: 7. Obtener URL para enviar documento
+      description: Genera la URL de la pantalla para elegir tipo de folio, tipo de firma y colocar firmas.
+      operationId: urlFirmaDoc
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UrlFirmaDocRequest'
+            example:
+              Usuario: demo
+              Clave: demo123
+              Token: ABCD1234EFGH5678IJKL9012MNOP3456
+              IdCliente: 1172
+              IdDocumento: 17388
+              Modo: P
+      responses:
+        "200":
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UrlFirmaDocResponse'
+              examples:
+                obtenido:
+                  value:
+                    Codigo: 200
+                    ExtraInfo:
+                      Clave: "20806"
+                      nombredocumento: DIGID Prueba de firma
+                      URL: https://digidmexico.com.mx/firma_pagina/...
+                no_existe:
+                  value:
+                    Codigo: 400
+                    ExtraInfo:
+                      Descripcion: No existe
+
+  # ═══════════════════════════════════════════════════════════════
+  # 8. Enviar a firmar
+  # ═══════════════════════════════════════════════════════════════
+  /api/ws/send_doc:
+    post:
+      tags: [Firma]
+      summary: 8. Enviar documento a firmar
+      description: |
+        Envía el documento para comenzar el proceso de firma.
+
+        `SignatureCoordinates` es un **string** que contiene un arreglo JSON serializado.
+        Cada objeto describe la posición de una firma en el PDF.
+
+        **Observador:** si se incluye `Observer` (email), `ObserverName` es obligatorio.
+      operationId: sendDoc
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendDocRequest'
+            example:
+              IdDoc: 17388
+              IdClient: 1172
+              FolioPremium: 0
+              TypeSign: 2
+              SignatureCoordinates: '[{"x":200,"y":225,"firmante":4419,"nombre":"DIGID MEXICO","pagina":1,"altoPagina":1048,"AnchoPagina":612,"xDoc":200,"yDoc":225,"position":0}]'
+              Remider: 1
+              ColorSign: "#000000"
+      responses:
+        "200":
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SendDocResponse'
+              examples:
+                enviado:
+                  value:
+                    Success: true
+                error:
+                  value:
+                    Success: false
+                    Message: Documento sin firmantes
+
+  # ═══════════════════════════════════════════════════════════════
+  # 9. Info documento
+  # ═══════════════════════════════════════════════════════════════
+  /wsdigid3/public/index.php/dInfoDocto:
+    post:
+      tags: [Documentos]
+      summary: 9. Información del documento y estatus de firmantes
+      description: Devuelve resumen del documento y estado por firmante.
+      operationId: infoDocto
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InfoDocumentoRequest'
+            example:
+              Usuario: demo
+              Clave: demo123
+              Token: ABCD1234EFGH5678IJKL9012MNOP3456
+              IdCliente: 1172
+              IdDocumento: 17388
+              Modo: P
+      responses:
+        "200":
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InfoDocumentoResponse'
+
+  # ═══════════════════════════════════════════════════════════════
+  # 10. Cancelar documento
+  # ═══════════════════════════════════════════════════════════════
+  /wsdigid3/public/index.php/dCancelarDocumento:
+    post:
+      tags: [Documentos]
+      summary: 10. Cancelar documento
+      description: Cancela un documento que no ha concluido el proceso de firma.
+      operationId: cancelarDocumento
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelarDocumentoRequest'
+            example:
+              Usuario: demo
+              Clave: demo123
+              Token: ABCD1234EFGH5678IJKL9012MNOP3456
+              IdCliente: 1172
+              IdDocumento: 17388
+              Modo: T
+      responses:
+        "200":
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LegacyResponse'
+              examples:
+                cancelado:
+                  value:
+                    Codigo: 200
+                    ExtraInfo:
+                      Descripcion: Documento cancelado
+                no_existe:
+                  value:
+                    Codigo: 400
+                    ExtraInfo:
+                      Descripcion: No existe
+
+  # ═══════════════════════════════════════════════════════════════
+  # 11. URL directa de firma para firmante
+  # ═══════════════════════════════════════════════════════════════
+  /wsdigid3/public/index.php/dObtenerURLFirmante:
+    post:
+      tags: [Firma]
+      summary: 11. URL directa de firma para firmante
+      description: Genera la URL personal para que un firmante firme directamente.
+      operationId: obtenerUrlFirmante
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UrlFirmanteRequest'
+            example:
+              Usuario: demo
+              Clave: demo123
+              Token: ABCD1234EFGH5678IJKL9012MNOP3456
+              IdCliente: 1172
+              IdDocumento: 17388
+              IdFirmante: 4419
+              Modo: P
+      responses:
+        "200":
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UrlFirmanteResponse'
+              examples:
+                obtenido:
+                  value:
+                    Codigo: 200
+                    ExtraInfo:
+                      URL: https://digidmexico.com.mx/firma_autografa/...
+                no_registrado:
+                  value:
+                    Codigo: 400
+                    ExtraInfo:
+                      Descripcion: Firmante no registrado
+
+  # ═══════════════════════════════════════════════════════════════
+  # 12. Reenviar documento por correo
+  # ═══════════════════════════════════════════════════════════════
+  /wsdigid3/public/index.php/dReEnviarDocumento:
+    post:
+      tags: [Firma]
+      summary: 12. Reenviar documento por correo para firma
+      description: Reenvía por correo el enlace de firma al firmante indicado.
+      operationId: reenviarDocumento
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReenviarDocumentoRequest'
+            example:
+              Usuario: demo
+              Clave: demo123
+              Token: ABCD1234EFGH5678IJKL9012MNOP3456
+              IdCliente: 1172
+              IdDocumento: 17388
+              IdFirmante: 4419
+              Modo: P
+      responses:
+        "200":
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LegacyResponse'
+              examples:
+                reenviado:
+                  value:
+                    Codigo: 200
+                    ExtraInfo:
+                      Descripcion: Documento Enviado
+                no_registrado:
+                  value:
+                    Codigo: 400
+                    ExtraInfo:
+                      Descripcion: Firmante no registrado
+
+  # ═══════════════════════════════════════════════════════════════
+  # 13. Crear plantilla
+  # ═══════════════════════════════════════════════════════════════
+  /api/ws/create_template:
+    post:
+      tags: [Plantillas]
+      summary: 13. Crear plantilla
+      description: Crea una plantilla reutilizable con campos dinámicos (parámetros). El archivo docx se sube como multipart.
+      operationId: createTemplate
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [Name, IdClient, File, Anexos]
+              properties:
+                Name:
+                  type: string
+                  example: Contrato Base
+                  description: Nombre de la plantilla (también acepta NameDoc)
+                IdClient:
+                  type: integer
+                  example: 1172
+                File:
+                  type: string
+                  format: binary
+                  description: Archivo docx con marcadores de parámetros
+                Anexos:
+                  type: boolean
+                  example: false
+                  description: Si la plantilla admite anexos
+      responses:
+        "200":
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateTemplateResponse'
+
+  # ═══════════════════════════════════════════════════════════════
+  # 14. Actualizar plantilla
+  # ═══════════════════════════════════════════════════════════════
+  /api/ws/update_template:
+    post:
+      tags: [Plantillas]
+      summary: 14. Actualizar plantilla
+      description: Modifica una plantilla existente. Requiere `IdTemplate`.
+      operationId: updateTemplate
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [NameDoc, IdClient, IdTemplate, FileDoc, Anexos]
+              properties:
+                IdTemplate:
+                  type: integer
+                  example: 55
+                IdClient:
+                  type: integer
+                  example: 1172
+                NameDoc:
+                  type: string
+                  example: Contrato Demo v2
+                FileDoc:
+                  type: string
+                  format: binary
+                Anexos:
+                  type: boolean
+                  example: false
+      responses:
+        "200":
+          description: Resultado (misma estructura que crear plantilla)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateTemplateResponse'
+
+  # ═══════════════════════════════════════════════════════════════
+  # 15. Obtener detalles de plantilla
+  # ═══════════════════════════════════════════════════════════════
+  /api/ws/get_template:
+    post:
+      tags: [Plantillas]
+      summary: 15. Obtener detalles de plantilla
+      description: Devuelve campos requeridos, metadatos y configuración de una plantilla.
+      operationId: getTemplate
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetTemplateRequest'
+            example:
+              IdClient: 1172
+              IdTemplate: 668
+      responses:
+        "200":
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetTemplateResponse'
+
+  # ═══════════════════════════════════════════════════════════════
+  # 16. Configurar webhook
+  # ═══════════════════════════════════════════════════════════════
+  /api/ws/add_webhook:
+    post:
+      tags: [Configuración]
+      summary: 16. Configurar webhook de notificaciones
+      description: Registra una URL para recibir notificaciones cuando cambia el estado de los documentos.
+      operationId: addWebhook
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookRequest'
+            example:
+              IdClient: 11
+              Url: https://miapp.com/webhooks/digid
+      responses:
+        "200":
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookResponse'
+
+  # ═══════════════════════════════════════════════════════════════
+  # 17. KYC on/off
+  # ═══════════════════════════════════════════════════════════════
+  /api/ws/asignaciones/kyc_on_off:
+    post:
+      tags: [Configuración]
+      summary: 17. Activar/desactivar KYC en asignación
+      description: Activa o desactiva la validación KYC para un firmante asignado a un documento.
+      operationId: kycOnOff
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KycOnOffRequest'
+            example:
+              IdClient: 1172
+              IdDocument: 17388
+              IdSignatory: 4419
+              kyc: true
+      responses:
+        "200":
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BearerSuccessResponse'
+              example:
+                Success: true
+
+  # ═══════════════════════════════════════════════════════════════
+  # 18. Certificar documento (constancia NOM-151)
+  # ═══════════════════════════════════════════════════════════════
+  /api/ws/certify_doc:
+    post:
+      tags: [Configuración]
+      summary: 18. Obtener constancia NOM-151
+      description: |
+        Certifica un archivo digital bajo constancia de conservación NOM-151.
+
+        La respuesta puede ser:
+        - **PDF** (el archivo de constancia directamente)
+        - **JSON** con `Success: true/false` según el ambiente
+      operationId: certifyDoc
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [IdClient, Document]
+              properties:
+                IdClient:
+                  type: integer
+                  example: 1172
+                Document:
+                  type: string
+                  format: binary
+                  description: Archivo PDF a certificar
+      responses:
+        "200":
+          description: Constancia PDF o confirmación JSON
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BearerSuccessResponse'

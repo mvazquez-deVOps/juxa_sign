@@ -54,6 +54,7 @@ import {
   memoryOrgSettingsUpsert,
   memoryOrgUserCount,
   memoryOrgUsersList,
+  getMemoryDefaultOrganizationId,
   memoryOrganizationFindById,
   memoryOrganizationFindBySlug,
   memoryPlacementCreate,
@@ -199,6 +200,21 @@ export async function dbUserFolioBalance(userId: string): Promise<number> {
   return u?.folioBalance ?? 0;
 }
 
+/** Rol y organización actuales en BD (corrige JWT desactualizado tras cambios en User). */
+export async function dbUserSessionFieldsById(
+  userId: string,
+): Promise<{ organizationId: string; role: UserRole } | null> {
+  if (isMemoryDataStore()) {
+    const u = memoryUserFindById(userId);
+    if (!u) return null;
+    return { organizationId: u.organizationId, role: u.role };
+  }
+  return prisma.user.findUnique({
+    where: { id: userId },
+    select: { organizationId: true, role: true },
+  });
+}
+
 export async function dbUserCreateFromInvite(data: {
   email: string;
   passwordHash: string;
@@ -248,6 +264,29 @@ export async function dbOrganizationExists(organizationId: string): Promise<bool
   const p = prisma;
   const n = await p.organization.count({ where: { id: organizationId } });
   return n > 0;
+}
+
+/**
+ * Sesión demo: usa `preferredId` si existe en BD; si no, organización `slug: default` (seed) o la más antigua.
+ */
+export async function dbOrganizationIdResolveForDemo(preferredId: string | undefined): Promise<string | null> {
+  const trimmed = preferredId?.trim() ?? "";
+  if (isMemoryDataStore()) {
+    if (trimmed && memoryOrganizationFindById(trimmed)) return trimmed;
+    const mem = getMemoryDefaultOrganizationId();
+    return memoryOrganizationFindById(mem) ? mem : null;
+  }
+  if (trimmed && (await dbOrganizationExists(trimmed))) return trimmed;
+  const bySlug = await prisma.organization.findFirst({
+    where: { slug: "default" },
+    select: { id: true },
+  });
+  if (bySlug) return bySlug.id;
+  const first = await prisma.organization.findFirst({
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+  });
+  return first?.id ?? null;
 }
 
 export async function dbOrganizationTrialForOrg(organizationId: string) {

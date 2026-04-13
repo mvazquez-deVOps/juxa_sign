@@ -191,12 +191,30 @@ export type RegistrarEmpresaInput = {
   Email: string;
 };
 
+// lib/digid.ts
 export async function registrarEmpresa(
   input: RegistrarEmpresaInput,
 ): Promise<LegacyRegistrarResponse> {
   if (isDigidMocked()) return digidMock.mockRegistrarEmpresa(input);
+
   const res = await digidPostLegacy("RegistrarEmpresa", input);
-  return res.json() as Promise<LegacyRegistrarResponse>;
+  const text = await res.text();
+
+  // Intentar parsear JSON; si falla, loguear snippet y lanzar error legible.
+  try {
+    const json = JSON.parse(text) as LegacyRegistrarResponse;
+    return json;
+  } catch (parseErr) {
+    console.error("RegistrarEmpresa: respuesta no JSON del proveedor:", {
+      status: res.status,
+      statusText: res.statusText,
+      contentType: res.headers.get("content-type"),
+      snippet: typeof text === "string" ? text.slice(0, 1200) : String(text),
+    });
+    throw new Error(
+      `RegistrarEmpresa: respuesta inesperada del proveedor (no JSON). HTTP ${res.status}. Revisa logs en la terminal.`,
+    );
+  }
 }
 
 // --- 2 Firmantes ---

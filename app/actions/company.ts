@@ -5,6 +5,7 @@ import { z } from "zod";
 import {
   dbCompanyCreate,
   dbCompanyFindFirstByDigidInOrg,
+  dbOrganizationExists,
 } from "@/lib/data/repository";
 import { registrarEmpresa } from "@/lib/digid";
 import { gateOrgStructureMutation } from "@/lib/gate";
@@ -36,6 +37,14 @@ export async function createCompany(
       ok: false,
       message:
         "Tu sesión no tiene organización asignada. Cierra sesión y vuelve a entrar, o revisa DEMO_ORGANIZATION_ID / datos del usuario en base.",
+    };
+  }
+
+  if (!(await dbOrganizationExists(orgId))) {
+    return {
+      ok: false,
+      message:
+        "La organización de tu sesión no existe en esta base de datos. Con modo demo: copia en .env DEMO_ORGANIZATION_ID el id de una fila real de Organization (tras npx prisma db seed), reinicia npm run dev y vuelve a entrar. Con correo y contraseña: cierra sesión y entra de nuevo para alinear la sesión con la base.",
     };
   }
 

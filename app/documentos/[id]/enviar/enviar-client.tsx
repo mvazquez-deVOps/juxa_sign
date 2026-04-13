@@ -550,9 +550,9 @@ export function EnviarClient({
               <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
                 <p className="text-sm font-medium">Observador (opcional)</p>
                 <p className="text-xs text-muted-foreground">
-                  Si indicas correo del observador, el nombre es obligatorio. Con{" "}
-                  <code className="text-xs">JUXA_NOTIFY_SIGNING=1</code> se puede enviar copia por correo (ver{" "}
-                  <code className="text-xs">.env.example</code>).
+                  Si indicas correo del observador, el nombre es obligatorio. Con proveedor de correo configurado (
+                  <code className="text-xs">MAIL_PROVIDER</code>) y sin <code className="text-xs">JUXA_NOTIFY_OBSERVER=0</code>, Juxa
+                  puede enviar copia informativa al observador (DIGID sigue siendo quien notifica según su flujo).
                 </p>
                 <div className="space-y-2">
                   <Label htmlFor="observerEmail">Correo del observador</Label>

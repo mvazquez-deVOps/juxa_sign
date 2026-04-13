@@ -4,10 +4,11 @@ import type { Session } from "next-auth";
 import type { UserRole } from "@prisma/client";
 import { DEMO_SESSION_COOKIE, verifyDemoSessionValue } from "@/lib/demo-auth-verify";
 import { isMemoryDataStore } from "@/lib/data/mode";
+import { dbOrganizationIdResolveForDemo } from "@/lib/data/repository";
+import { DEMO_SYNTHETIC_USER_ID } from "@/lib/demo-session-ids";
 import { getMemoryDefaultOrganizationId } from "@/lib/store/memory-store";
 
-/** Coincide con `user.id` de la sesión sintética en modo demo (layout / sidebar). */
-export const DEMO_SYNTHETIC_USER_ID = "demo-gate";
+export { DEMO_SYNTHETIC_USER_ID };
 
 /**
  * Sesión NextAuth o, en modo demo (DEMO_PASSWORD + cookie válida), una sesión sintética
@@ -26,15 +27,20 @@ async function resolveDemoSession(): Promise<Session | null> {
     return null;
   }
   const secret = process.env.DEMO_AUTH_SECRET?.trim();
-  const orgId =
-    process.env.DEMO_ORGANIZATION_ID?.trim() ||
-    (isMemoryDataStore() ? getMemoryDefaultOrganizationId() : "");
-  if (!secret || !orgId) {
+  if (!secret) {
     return null;
   }
   const jar = await cookies();
   const token = jar.get(DEMO_SESSION_COOKIE)?.value;
   if (!token || !(await verifyDemoSessionValue(token, secret))) {
+    return null;
+  }
+
+  const preferredFromEnv = process.env.DEMO_ORGANIZATION_ID?.trim();
+  const preferredMemory = isMemoryDataStore() ? getMemoryDefaultOrganizationId() : undefined;
+  const preferred = preferredFromEnv || preferredMemory;
+  const orgId = await dbOrganizationIdResolveForDemo(preferred);
+  if (!orgId) {
     return null;
   }
 
