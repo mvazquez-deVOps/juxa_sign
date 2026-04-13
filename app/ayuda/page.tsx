@@ -61,12 +61,6 @@ export default function AyudaIndexPage() {
           </Link>
         </CardContent>
       </Card>
-
-      <p className="text-xs text-muted-foreground">
-        ¿Algo no cuadra con tu caso? Revisa también{" "}
-        <code className="rounded bg-muted px-1">docs/checklist-pruebas-firma.md</code> en el repositorio o contacta al
-        administrador de tu organización.
-      </p>
     </div>
   );
 }

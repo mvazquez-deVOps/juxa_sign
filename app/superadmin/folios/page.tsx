@@ -66,7 +66,7 @@ export default async function SuperadminFoliosPage() {
           premium, transferencias entre miembros, etc.). Desde aquí puedes acreditar créditos, revisar el ledger global y
           definir paquetes que el panel muestra en{" "}
           <Link href="/folios/planes" className="font-medium text-primary underline">
-            Planes de folios
+            Planes
           </Link>
           .
         </p>

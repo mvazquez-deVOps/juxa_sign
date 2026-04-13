@@ -6,7 +6,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "next dev  -p 3333",
+    "dev": "next dev -p 3333",
     "dev:free": "node scripts/dev-free-port.mjs",
     "dev:3000": "next dev --turbopack -p 3000",
     "dev:3008": "next dev --turbopack -p 3008",

@@ -126,11 +126,9 @@ export default async function FoliosPlanesPage() {
     <div className="space-y-8">
       <PotentialConsumerCallout variant="planes" />
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Planes de folios</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Planes</h1>
         <p className="text-sm text-muted-foreground">
-          Paquetes de créditos para envíos a firma. El pago en línea (Stripe u otra pasarela) se integrará en una
-          siguiente versión; por ahora contacta a tu administrador o usa acreditación desde plataforma. Los usuarios
-          visor comparten este catálogo como parte del acercamiento comercial antes de operar con cartera propia.
+          Conoce nuestros planes que tenemos para ti. 
         </p>
       </div>
 

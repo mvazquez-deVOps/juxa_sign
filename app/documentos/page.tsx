@@ -39,19 +39,9 @@ export default async function DocumentosPage() {
           {docs.length === 0 ? (
             <div className="flex flex-col items-center gap-4 py-12 text-center">
               <p className="text-muted-foreground">
-                No hay documentos aún. Para subir un PDF necesitas al menos un cliente en Clientes; los firmantes los
-                das de alta después para asignar marcas y enviar a firma.
+                No hay documentos aún. Para subir un PDF necesitas al menos un cliente registrado. <br />
+                Los firmantes los das de alta después para asignar marcas y enviar a firma.
               </p>
-              <div className="flex flex-wrap justify-center gap-2">
-                {allowWrite ? (
-                  <Button asChild>
-                    <Link href="/documentos/nuevo">Subir el primero</Link>
-                  </Button>
-                ) : null}
-                <Button variant="outline" asChild>
-                  <Link href="/prueba-e2e">Orden del checklist</Link>
-                </Button>
-              </div>
             </div>
           ) : (
             <DocumentosDataTable

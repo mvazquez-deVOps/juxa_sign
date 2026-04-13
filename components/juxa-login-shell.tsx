@@ -1,11 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
-/**
- * Marco visual marca JUXA (login, invitación, errores públicos): hero + panel + pie.
- * Colores fijos (no dependen del tema global).
- */
 export function JuxaLoginShell({
   children,
   aside,
@@ -45,15 +42,15 @@ export function JuxaLoginShell({
       <div className="relative z-[1] grid flex-1 lg:grid-cols-[1fr_min(440px,100%)] lg:gap-0">
         <header className="flex flex-col justify-center px-8 pb-10 pt-16 lg:px-14 lg:pb-24 lg:pt-0">
           <div className="mx-auto w-full max-w-lg lg:mx-0">
-            <p
-              className={cn(
-                "bg-gradient-to-r from-[#2ABDA8] to-[#1d4ed8] bg-clip-text text-4xl font-bold tracking-[0.35em] text-transparent sm:text-5xl",
-                "drop-shadow-[0_0_32px_rgba(42,189,168,0.15)]",
-              )}
-            >
-              JUXA
-            </p>
-            <p className="mt-2 text-[10px] font-medium uppercase tracking-[0.45em] text-zinc-500">Sign</p>
+            <Image
+              src="/LOGO2.png" // Asegúrate de que el nombre coincida exactamente con tu archivo en 'public'
+              alt="Logo de Juxa"
+              width={140} // Ajusta el ancho según las proporciones de tu logo
+              height={60} // Ajusta el alto según las proporciones de tu logo
+              priority
+              className="drop-shadow-[0_0_32px_rgba(42,189,168,0.15)] object-contain" 
+            />
+            <p className="mt-2 text-[12px] font-medium uppercase tracking-[0.45em] text-zinc-500">Sign</p>
 
             <div className="mt-10">
               {heroTitle ?? (
@@ -84,20 +81,17 @@ export function JuxaLoginShell({
       <footer className="relative z-[1] border-t border-white/[0.06] px-6 py-5 text-[10px] uppercase tracking-[0.12em] text-zinc-500">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <span>JX Labs © {new Date().getFullYear()}</span>
+            <span>JX Labs | Todos los derechos reservados &copy; {new Date().getFullYear()}</span>
             <span className="hidden h-3 w-px bg-white/10 sm:inline" aria-hidden />
             <span className="text-[#2ABDA8]/90">Encriptación de grado legal</span>
           </div>
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-1 normal-case tracking-normal">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-1 uppercase tracking-normal">
             <a
               href="mailto:soporte@juxa.mx"
               className="text-zinc-500 transition hover:text-[#2ABDA8]"
             >
               soporte@juxa.mx
             </a>
-            <Link href="/" className="text-zinc-500 transition hover:text-[#2ABDA8]">
-              Inicio
-            </Link>
           </div>
         </div>
       </footer>

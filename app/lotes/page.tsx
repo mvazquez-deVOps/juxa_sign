@@ -26,18 +26,9 @@ export default async function LotesPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Lotes de envío</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Envíos masivos</h1>
           <p className="text-muted-foreground">
-            Envía varios documentos a firmar en secuencia (mismas reglas que “Enviar a firmar”: marcas y firmantes
-            asignados).
-            {showBatchApiHint ? (
-              <>
-                {" "}
-                Con API key:{" "}
-                <code className="rounded bg-muted px-1 text-xs">POST /api/v1/batch/send</code> (un documento por
-                solicitud; el campo es <code className="rounded bg-muted px-1 text-xs">documentId</code>).
-              </>
-            ) : null}
+            Envía varios documentos a firmar en secuencia.
           </p>
         </div>
         <Button variant="outline" asChild>

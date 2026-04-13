@@ -16,7 +16,6 @@ import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 import { CredentialsLoginForm } from "./credentials-login";
-import { LoginTestHint } from "./login-test-hint";
 
 type Props = {
   searchParams: Promise<{ error?: string; from?: string; misconfig?: string; reason?: string }>;
@@ -54,26 +53,16 @@ export default async function LoginPage({ searchParams }: Props) {
     return (
       <JuxaLoginShell topRight={themeToggle}>
         <div className="flex w-full flex-col">
-          <JuxaBrand
-            variant="loginPanel"
-            className="mb-8"
-            subtitle={
-              memoryStore ? "Acceso al panel · datos en memoria (reinicio = datos nuevos)" : undefined
-            }
-          />
+          
           <div className={juxaLoginCardClass}>
             {sesionInvalidaBanner}
             <div className="space-y-1">
               <h2 className={juxaLoginTitleClass}>Bienvenido</h2>
-              <p className={juxaLoginEyebrowClass}>Juxa Sign · acceso al panel</p>
+              <p className={juxaLoginEyebrowClass}>Inicia sesión para continuar</p>
               <p className={cn(juxaLoginMutedClass, "mt-4")}>
-                {memoryStore
-                  ? "En memoria hay cuatro cuentas de ejemplo en la misma organización: administrador (ADMIN), operador (OPERATOR, vista producto en inicio), pruebas (SANDBOX, checklist sandbox y E2E en inicio) y solo visualización (VIEWER). NextAuth valida correo y contraseña; los datos no persisten si reinicias el servidor."
-                  : "Cada usuario pertenece a una organización (tenant). Invitaciones desde Configuración → Equipo o cuentas del seed (ADMIN, OPERATOR, opcional SANDBOX, USER y VIEWER)."}
               </p>
             </div>
             <div className="mt-8">
-              <LoginTestHint demoMode={false} />
               <Suspense fallback={<p className={juxaLoginMutedClass}>Cargando…</p>}>
                 <CredentialsLoginForm />
               </Suspense>
@@ -102,7 +91,6 @@ export default async function LoginPage({ searchParams }: Props) {
             </p>
           </div>
           <div className="mt-8">
-            <LoginTestHint demoMode />
             {misconfig ? (
               <p className="mb-4 rounded-xl border border-red-500/35 bg-red-950/40 p-3 text-sm text-red-200">
                 Configuración incompleta: con <code className="font-mono text-xs">DEMO_PASSWORD</code> debes definir{" "}

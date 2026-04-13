@@ -25,7 +25,9 @@ test.describe("autenticación", () => {
     await page.getByLabel("Contraseña").fill("operador1234");
     await page.getByRole("button", { name: "Acceder" }).click();
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.getByText(/Rol:\s*OPERATOR/)).toBeVisible();
+    await page.goto("/documentos");
+    await expect(page.getByRole("heading", { name: "Documentos", exact: true })).toBeVisible();
+    await expect(page.locator("aside").getByText(/Rol:\s*Operador/)).toBeVisible();
   });
 
   test("sin sesión, documentos redirige a login", async ({ page }) => {
