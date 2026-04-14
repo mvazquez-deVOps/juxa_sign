@@ -9,11 +9,27 @@ import {
 import { registrarEmpresa } from "@/lib/digid";
 import { gateOrgStructureMutation } from "@/lib/gate";
 
+function formText(formData: FormData, key: string): string {
+  const v = formData.get(key);
+  return typeof v === "string" ? v.trim() : "";
+}
+
 const schema = z.object({
-  razonSocial: z.string().min(2),
-  rfc: z.string().min(10).max(13),
-  email: z.string().email(),
+  razonSocial: z.string().min(2, "Razón social o nombre: mínimo 2 caracteres."),
+  rfc: z
+    .string()
+    .min(10, "RFC: debe tener entre 10 y 13 caracteres (persona moral o física).")
+    .max(13, "RFC: máximo 13 caracteres; quita espacios si lo pegaste del portapapeles."),
+  email: z.string().email("Correo: usa un formato válido (ej. contacto@empresa.com)."),
 });
+
+function firstValidationMessage(fieldErrors: z.inferFlattenedErrors<typeof schema>["fieldErrors"]): string {
+  for (const key of ["razonSocial", "rfc", "email"] as const) {
+    const msg = fieldErrors[key]?.[0];
+    if (msg) return msg;
+  }
+  return "Revisa razón social, RFC y correo.";
+}
 
 export type CompanyActionState = {
   ok: boolean;
@@ -40,12 +56,13 @@ export async function createCompany(
   }
 
   const parsed = schema.safeParse({
-    razonSocial: formData.get("razonSocial"),
-    rfc: formData.get("rfc"),
-    email: formData.get("email"),
+    razonSocial: formText(formData, "razonSocial"),
+    rfc: formText(formData, "rfc").toUpperCase(),
+    email: formText(formData, "email").toLowerCase(),
   });
   if (!parsed.success) {
-    return { ok: false, message: parsed.error.flatten().fieldErrors.razonSocial?.[0] ?? "Datos inválidos" };
+    const { fieldErrors } = parsed.error.flatten();
+    return { ok: false, message: firstValidationMessage(fieldErrors) };
   }
   try {
     const res = await registrarEmpresa({
@@ -94,7 +111,21 @@ export async function createCompany(
       return { ok: false, message: res.ExtraInfo?.Descripcion ?? "Empresa ya registrada." };
     }
     if (Number(res.Codigo) !== 200 || !res.ExtraInfo?.Id) {
-      return { ok: false, message: `Respuesta del proveedor: código ${res.Codigo}` };
+      const r = res as {
+        Codigo?: number;
+        ExtraInfo?: { Descripcion?: string; Id?: string };
+        message?: string;
+      };
+      const detail =
+        r.ExtraInfo?.Descripcion ??
+        (typeof r.message === "string" ? r.message : undefined) ??
+        (r.Codigo != null ? `código ${r.Codigo}` : undefined);
+      return {
+        ok: false,
+        message: detail
+          ? `Proveedor: ${detail}`
+          : "Respuesta del proveedor no reconocida (sin código ni mensaje). Revisa DIGID_LEGACY_BASE y credenciales.",
+      };
     }
     const digidId = parseInt(res.ExtraInfo.Id, 10);
     const company = await dbCompanyCreate({
