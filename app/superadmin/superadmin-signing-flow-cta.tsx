@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileSignature, FileText, PenLine, Send, Users, Building2, Map } from "lucide-react";
+import { Signature, FileText, PenLine, Send, Users, Building2, Map } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -11,7 +11,7 @@ export function SuperadminSigningFlowCta() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
-            <FileSignature className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+            <Signature className="h-4 w-4 shrink-0 text-primary" aria-hidden />
             Firma de contratos y documentos
           </p>
           <p className="text-sm text-muted-foreground">

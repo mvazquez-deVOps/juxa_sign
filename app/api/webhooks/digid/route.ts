@@ -26,15 +26,18 @@ function payloadDedupeKey(req: NextRequest, raw: string): string {
 }
 
 /**
- * DIGID notifica cambios de documento. Ajusta el parsing según el payload real que envíe DIGID.
+ * DIGID notifica cambios de documento. 
+ * HOMOLOGADO: La respuesta siempre debe coincidir con el estándar de WeTrust { Success: boolean, Message: string }
  */
 export async function POST(req: NextRequest) {
   const ip =
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
     req.headers.get("x-real-ip")?.trim() ||
     "unknown";
+    
   if (!allowWebhookRequest(ip)) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    // Homologado a WeTrust
+    return NextResponse.json({ Success: false, Message: "Too many requests" }, { status: 429 });
   }
 
   const secret = process.env.DIGID_WEBHOOK_SECRET?.trim();
@@ -42,7 +45,8 @@ export async function POST(req: NextRequest) {
     const q = req.nextUrl.searchParams.get("secret");
     const h = req.headers.get("x-digid-secret");
     if (q !== secret && h !== secret) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      // Homologado a WeTrust
+      return NextResponse.json({ Success: false, Message: "Unauthorized webhook access" }, { status: 401 });
     }
   }
 
@@ -50,14 +54,17 @@ export async function POST(req: NextRequest) {
   try {
     raw = await req.text();
   } catch {
-    return NextResponse.json({ error: "Body inválido" }, { status: 400 });
+    // Homologado a WeTrust
+    return NextResponse.json({ Success: false, Message: "Cuerpo de la petición inválido" }, { status: 400 });
   }
 
   const payloadHash = payloadDedupeKey(req, raw);
   const since = new Date(Date.now() - DEDUPE_WINDOW_MS);
   const prior = await dbWebhookFindDuplicate(payloadHash, since);
+  
   if (prior) {
-    return NextResponse.json({ received: true, duplicate: true, duplicateOf: prior.id });
+    // Homologado a WeTrust: Incluso si es duplicado, respondemos Success: true para que DIGID deje de insistir.
+    return NextResponse.json({ Success: true, Message: "Evento recibido previamente (Duplicado)" }, { status: 200 });
   }
 
   const event = await dbWebhookCreate(raw, payloadHash);
@@ -75,9 +82,11 @@ export async function POST(req: NextRequest) {
       const existing = await dbDocumentFindFirstByDigidSelectStatus(documentDigidId);
       const prevStatus = existing?.status ?? null;
       const statusChanged = Boolean(existing && prevStatus !== parsedStatus);
+      
       if (statusChanged) {
         await dbDocumentUpdateManyStatusByDigid(documentDigidId, parsedStatus);
       }
+      
       if (statusChanged && process.env.JUXA_WEBHOOK_NOTIFY === "1") {
         const ctx = await dbDocumentNotifyContextByDigidId(documentDigidId);
         const orgId = ctx?.organizationId;
@@ -125,5 +134,6 @@ export async function POST(req: NextRequest) {
     await dbWebhookUpdate(event.id, { processed: true, parseError });
   }
 
-  return NextResponse.json({ received: true });
+  // Homologado a WeTrust: Respuesta final exitosa
+  return NextResponse.json({ Success: true, Message: "Webhook procesado correctamente" }, { status: 200 });
 }

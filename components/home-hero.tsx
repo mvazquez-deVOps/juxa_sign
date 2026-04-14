@@ -35,7 +35,7 @@ export function HomeHero({ showSandboxShortcuts = false }: { showSandboxShortcut
       </motion.h1>
       <motion.p variants={item} className="mt-4 max-w-xl text-muted-foreground">
         Registra clientes -empresa o persona física-, administra firmantes, sube PDFs, coloca marcas de
-        firma y envía a firmar. Todo desde un sola sola plataforma.
+        firma y envía a firmar. Todo desde una sola plataforma.
       </motion.p>
       <motion.div variants={item} className="mt-8 flex flex-wrap gap-3">
         <Button asChild>

@@ -44,7 +44,6 @@ export default function RegistroPage() {
   return (
     <JuxaLoginShell topRight={themeToggle}>
       <div className="flex w-full flex-col">
-        <JuxaBrand variant="loginPanel" className="mb-8" subtitle="Crea tu espacio de trabajo" />
         <div className={juxaLoginCardClass}>
           <div className="space-y-1">
             <h2 className={juxaLoginTitleClass}>Registro</h2>
