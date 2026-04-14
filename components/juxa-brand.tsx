@@ -1,4 +1,4 @@
-import { FileSignature } from "lucide-react";
+import { Signature } from "lucide-react";
 import { isMemoryDataStore } from "@/lib/data/mode";
 import { cn } from "@/lib/utils";
 
@@ -26,7 +26,7 @@ export function JuxaBrand({
     return (
       <div className={cn("flex flex-col items-center gap-3 text-center", className)}>
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#2ABDA8]/25 bg-[#2ABDA8]/10 text-[#2ABDA8]">
-          <FileSignature className="h-6 w-6" />
+          <Signature className="h-6 w-6" />
         </div>
         <div className="space-y-1">
           <p className="text-lg font-semibold tracking-tight text-white">Juxa Sign</p>
@@ -39,7 +39,7 @@ export function JuxaBrand({
   return (
     <div className={cn("flex flex-col items-center gap-3 text-center", className)}>
       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[#2ABDA8]/25 bg-gradient-to-br from-[#2ABDA8]/15 to-[#1d4ed8]/10 text-[#2ABDA8] dark:border-[#2ABDA8]/30 dark:from-[#2ABDA8]/20 dark:to-[#1d4ed8]/15 dark:text-[#5ee4d4]">
-        <FileSignature className="h-6 w-6" />
+        <Signature className="h-6 w-6" />
       </div>
       <div className="space-y-1">
         <p className="text-xl font-semibold tracking-tight">Juxa Sign</p>

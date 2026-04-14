@@ -87,25 +87,111 @@ export async function digidFetchBearer(
   return fetch(url, { ...init, headers });
 }
 
+/**
+ * URLs candidatas para POST legacy (se prueban en orden hasta HTTP 200 o agotar lista en 404).
+ * 1) Doc: `.../index.php/Acción`
+ * 2) Sin `index.php` en path: `.../public/Acción`
+ * 3) Query (algunos PHP): `.../index.php?action=Acción`
+ */
+function legacyActionUrls(baseRaw: string, action: string): string[] {
+  const base = trimBase(baseRaw);
+  const a = action.replace(/^\//, "");
+  const urls: string[] = [];
+  const seen = new Set<string>();
+  const push = (u: string) => {
+    if (!seen.has(u)) {
+      seen.add(u);
+      urls.push(u);
+    }
+  };
+
+  push(`${base}/${a}`);
+
+  if (!process.env.DIGID_LEGACY_SKIP_INDEXPHP_RETRY?.trim()) {
+    const withoutIndexPhp = base.replace(/\/index\.php$/i, "");
+    if (withoutIndexPhp !== base) {
+      push(`${withoutIndexPhp}/${a}`);
+    }
+  }
+
+  if (!process.env.DIGID_LEGACY_SKIP_QUERY_RETRY?.trim() && /\.php$/i.test(base)) {
+    const sep = base.includes("?") ? "&" : "?";
+    push(`${base}${sep}action=${encodeURIComponent(a)}`);
+  }
+
+  return urls;
+}
+
+function legacyHttpErrorMessage(action: string, status: number, text: string): string {
+  try {
+    const j = JSON.parse(text) as Record<string, unknown>;
+    const m = j.message ?? j.Message ?? j.error;
+    if (typeof m === "string" && m.trim()) return `DIGID ${action} (HTTP ${status}): ${m.trim()}`;
+    const desc = j.ExtraInfo && typeof j.ExtraInfo === "object" && (j.ExtraInfo as { Descripcion?: string }).Descripcion;
+    if (typeof desc === "string" && desc.trim()) return `DIGID ${action} (HTTP ${status}): ${desc.trim()}`;
+  } catch {
+    /* cuerpo no JSON */
+  }
+  const clip = text.replace(/\s+/g, " ").trim().slice(0, 280);
+  return `DIGID ${action} (HTTP ${status})${clip ? `: ${clip}` : ""}`;
+}
+
 export async function digidPostLegacy(
   action: string,
   body: Record<string, unknown>,
-): Promise<Response> {
+): Promise<any> {
   assertDigidEnv();
-  const base = trimBase(process.env.DIGID_LEGACY_BASE!);
-  const url = `${base}/${action.replace(/^\//, "")}`;
+  const baseRaw = process.env.DIGID_LEGACY_BASE!.trim();
+  const urls = legacyActionUrls(baseRaw, action);
+
   const payload = {
-    Usuario: process.env.DIGID_USUARIO,
-    Clave: process.env.DIGID_CLAVE,
-    Token: process.env.DIGID_TOKEN,
-    Modo: process.env.DIGID_MODO,
+    Usuario: process.env.DIGID_USUARIO!.trim(),
+    Clave: process.env.DIGID_CLAVE!.trim(),
+    Token: process.env.DIGID_TOKEN!.trim(),
+    Modo: process.env.DIGID_MODO!.trim(),
     ...body,
   };
-  return fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+
+  const safePayload = { ...payload, Clave: "***", Token: "***" };
+
+  for (let i = 0; i < urls.length; i++) {
+    const url = urls[i]!;
+    console.log(`\n🚀 [DIGID LEGACY] POST ${url}`);
+    console.log(`📦 PAYLOAD:`, JSON.stringify(safePayload));
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "User-Agent": "JuxaSign-Backend/1.0",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const text = await res.text();
+    console.log(`📥 STATUS: ${res.status} · body: ${text.slice(0, 400)}${text.length > 400 ? "…" : ""}`);
+    console.log(`----------------------------------------`);
+
+    if (res.ok) {
+      try {
+        return JSON.parse(text) as Record<string, unknown>;
+      } catch {
+        throw new Error(
+          `DIGID ${action}: HTTP 200 pero la respuesta no es JSON válido (${text.slice(0, 200)}…).`,
+        );
+      }
+    }
+
+    if (res.status === 404 && i < urls.length - 1) {
+      console.warn(`[DIGID legacy] 404 en esta ruta; reintentando URL alternativa…`);
+      continue;
+    }
+
+    throw new Error(legacyHttpErrorMessage(action, res.status, text));
+  }
+
+  throw new Error(`DIGID ${action}: no se pudo completar la petición legacy.`);
 }
 
 // --- Tipos respuestas ---
@@ -195,8 +281,9 @@ export async function registrarEmpresa(
   input: RegistrarEmpresaInput,
 ): Promise<LegacyRegistrarResponse> {
   if (isDigidMocked()) return digidMock.mockRegistrarEmpresa(input);
-  const res = await digidPostLegacy("RegistrarEmpresa", input);
-  return res.json() as Promise<LegacyRegistrarResponse>;
+  // Al usar la nueva función, ya nos devuelve el JSON parseado
+  const data = await digidPostLegacy("RegistrarEmpresa", input);
+  return data as LegacyRegistrarResponse;
 }
 
 // --- 2 Firmantes ---
@@ -309,19 +396,17 @@ export async function desasignarFirmante(body: {
   IdDocumento: number;
   IdFirmante: number;
 }): Promise<LegacyRegistrarResponse> {
-  const res = await digidPostLegacy("dDesAsignarFirmante", body);
-  return res.json() as Promise<LegacyRegistrarResponse>;
+  const data = await digidPostLegacy("dDesAsignarFirmante", body);
+  return data as LegacyRegistrarResponse;
 }
-
-// --- 7 URL firma doc ---
 
 export async function obtenerUrlFirmaDocumento(body: {
   IdCliente: number;
   IdDocumento: number;
 }): Promise<LegacyRegistrarResponse> {
   if (isDigidMocked()) return digidMock.mockObtenerUrlFirmaDocumento(body);
-  const res = await digidPostLegacy("dURLFirmaDoc", body);
-  return res.json() as Promise<LegacyRegistrarResponse>;
+  const data = await digidPostLegacy("dURLFirmaDoc", body);
+  return data as LegacyRegistrarResponse;
 }
 
 // --- 8 Enviar a firmar ---
@@ -368,8 +453,8 @@ export async function infoDocumento(body: {
   IdDocumento: number;
 }): Promise<LegacyRegistrarResponse> {
   if (isDigidMocked()) return digidMock.mockInfoDocumento(body);
-  const res = await digidPostLegacy("dInfoDocto", body);
-  return res.json() as Promise<LegacyRegistrarResponse>;
+  const data = await digidPostLegacy("dInfoDocto", body);
+  return data as LegacyRegistrarResponse;
 }
 
 // --- 10 Cancelar ---
@@ -378,11 +463,9 @@ export async function cancelarDocumento(body: {
   IdCliente: number;
   IdDocumento: number;
 }): Promise<LegacyRegistrarResponse> {
-  const res = await digidPostLegacy("dCancelarDocumento", body);
-  return res.json() as Promise<LegacyRegistrarResponse>;
+  const data = await digidPostLegacy("dCancelarDocumento", body);
+  return data as LegacyRegistrarResponse;
 }
-
-// --- 11 URL firmante ---
 
 export async function urlFirmaFirmante(body: {
   IdCliente: number;
@@ -390,11 +473,9 @@ export async function urlFirmaFirmante(body: {
   IdFirmante: number;
 }): Promise<LegacyRegistrarResponse> {
   if (isDigidMocked()) return digidMock.mockUrlFirmaFirmante(body);
-  const res = await digidPostLegacy("dObtenerURLFirmante", body);
-  return res.json() as Promise<LegacyRegistrarResponse>;
+  const data = await digidPostLegacy("dObtenerURLFirmante", body);
+  return data as LegacyRegistrarResponse;
 }
-
-// --- 12 Reenviar ---
 
 export async function reenviarDocumento(body: {
   IdCliente: number;
@@ -402,8 +483,8 @@ export async function reenviarDocumento(body: {
   IdFirmante: number;
 }): Promise<LegacyRegistrarResponse> {
   if (isDigidMocked()) return digidMock.mockReenviarDocumento();
-  const res = await digidPostLegacy("dReEnviarDocumento", body);
-  return res.json() as Promise<LegacyRegistrarResponse>;
+  const data = await digidPostLegacy("dReEnviarDocumento", body);
+  return data as LegacyRegistrarResponse;
 }
 
 // --- 16 Webhook ---

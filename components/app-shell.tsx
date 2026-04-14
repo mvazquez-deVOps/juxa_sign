@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { FileSignature, Building2, Users, FileText, LayoutDashboard, Settings, Send, Map, TrendingUp, UserPlus, Layers, KeyRound, Shield, Coins, CircleHelp, FlaskConical, Wallet2, WalletCards, } from "lucide-react";
+import { Building2, Users, FileText, LayoutDashboard, Settings, Send, Map, TrendingUp, UserPlus, Layers, KeyRound, Shield, Coins, CircleHelp, FlaskConical, Wallet2, WalletCards, } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SidebarSessionBlock, type SessionUserChip } from "@/components/sidebar-session";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -85,11 +86,16 @@ export function AppShell({
     <div className="min-h-screen bg-background">
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-border bg-card shadow-sm dark:border-white/[0.06] dark:bg-card/95 dark:shadow-none md:flex md:backdrop-blur-xl">
         <div className="flex h-16 items-center justify-between gap-2 border-b border-border px-4 dark:border-white/[0.06]">
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#2ABDA8]/25 bg-gradient-to-br from-[#2ABDA8]/20 to-[#1d4ed8]/15 text-[#2ABDA8] dark:text-[#5ee4d4]">
-              <FileSignature className="h-5 w-5" />
-            </div>
-            <div className="min-w-0">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+            <Image
+              src="/JUXA01.png"
+              alt="Juxa Sign"
+              width={320}
+              height={72}
+              className="h-9 w-auto shrink-0"
+              priority
+            />
+            <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold tracking-tight">Juxa Sign</p>
               <p className="truncate text-xs text-muted-foreground">
                 {memoryMode && memoryDevSubtitle
@@ -128,9 +134,16 @@ export function AppShell({
       <div className="md:pl-60">
         <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur-md dark:border-white/[0.06] md:hidden">
           <div className="flex h-12 items-center justify-between gap-2 px-4">
-            <div className="flex items-center gap-2">
-              <FileSignature className="h-6 w-6 text-[#2ABDA8]" />
-              <span className="font-semibold">Juxa Sign</span>
+            <div className="flex min-w-0 items-center gap-1.5">
+              <Image
+                src="/JUXA01.png"
+                alt="Juxa Sign"
+                width={320}
+                height={72}
+                className="h-8 w-auto shrink-0"
+                priority
+              />
+              <span className="min-w-0 truncate font-semibold">Juxa Sign</span>
             </div>
             <ThemeToggle />
           </div>

@@ -29,6 +29,8 @@ function isDemoPublic(pathname: string) {
     pathname.startsWith("/api/webhooks/digid") ||
     pathname.startsWith("/api/demo-auth") ||
     pathname.startsWith("/api/health") ||
+    pathname.startsWith("/api/diagnostico-general") ||
+    pathname.startsWith("/api/proxy-pdf") ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/v1/")
   );
@@ -105,11 +107,21 @@ const withNextAuth = auth((req) => {
     path.startsWith("/_next") ||
     path.startsWith("/favicon") ||
     path === "/icon.svg" ||
-    path.endsWith(".svg")||
+    path.endsWith(".svg") ||
     path.endsWith(".png") ||
     path.endsWith(".jpg");
 
-  if (isStaticPath || isPublicMockSigningPdf(path) || isAuthApi || isWebhook || isPublicApiV1) {
+  const isProxyPdf = path.startsWith("/api/proxy-pdf");
+  const isDiagnosticoDigid = path.startsWith("/api/diagnostico-general");
+  if (
+    isStaticPath ||
+    isPublicMockSigningPdf(path) ||
+    isAuthApi ||
+    isWebhook ||
+    isPublicApiV1 ||
+    isProxyPdf ||
+    isDiagnosticoDigid
+  ) {
     return NextResponse.next();
   }
 

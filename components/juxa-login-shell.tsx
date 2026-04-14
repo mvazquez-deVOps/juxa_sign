@@ -43,12 +43,12 @@ export function JuxaLoginShell({
         <header className="flex flex-col justify-center px-8 pb-10 pt-16 lg:px-14 lg:pb-24 lg:pt-0">
           <div className="mx-auto w-full max-w-lg lg:mx-0">
             <Image
-              src="/LOGO2.png" // Asegúrate de que el nombre coincida exactamente con tu archivo en 'public'
+              src="/LOGO2.png"
               alt="Logo de Juxa"
-              width={140} // Ajusta el ancho según las proporciones de tu logo
-              height={60} // Ajusta el alto según las proporciones de tu logo
+              width={280}
+              height={100}
               priority
-              className="drop-shadow-[0_0_32px_rgba(42,189,168,0.15)] object-contain" 
+              className="h-[60px] w-auto max-w-[min(100%,280px)] object-contain object-left drop-shadow-[0_0_32px_rgba(42,189,168,0.15)]"
             />
             <p className="mt-2 text-[12px] font-medium uppercase tracking-[0.45em] text-zinc-500">Sign</p>
 
