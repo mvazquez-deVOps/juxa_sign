@@ -38,9 +38,6 @@ export default async function EnviarDocumentoPage({ params }: Props) {
             {doc.status ? ` · ${doc.status}` : ""}
           </p>
         </div>
-        <Button variant="outline" asChild>
-          <Link href={`/documentos/${doc.id}`}>Visor</Link>
-        </Button>
       </div>
 
       <EnviarClient

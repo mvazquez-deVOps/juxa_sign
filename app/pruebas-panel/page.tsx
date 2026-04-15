@@ -43,11 +43,9 @@ export default async function PruebasPanelPage() {
   const superadmin = panelHubSuperadminRoutes(role);
 
   const digidReadyHint =
-    !env.memoryDataStore && !env.digidMocked && env.digidCredsConfigured
-      ? "Las llamadas del panel deberían ir a DIGID real (modo indicado abajo). Haz un flujo corto: cliente → firmante → documento."
-      : env.digidMocked
-        ? "Ahora mismo el proveedor está simulado (mock o modo memoria). Para usar tus APIs reales, sigue los pasos de la tarjeta «Prueba con DIGID real»."
-        : "Completa credenciales DIGID en .env y evita DIGID_MOCK / memoria.";
+    !env.memoryDataStore && env.digidCredsConfigured
+      ? "Las llamadas del panel van al API de DIGID (modo indicado abajo). Haz un flujo corto: cliente → firmante → documento."
+      : "Completa credenciales DIGID en .env y usa Postgres (no JUXA_DATA_STORE=memory) para un entorno alineado con despliegue.";
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 pb-16">
@@ -74,9 +72,7 @@ export default async function PruebasPanelPage() {
             <Badge variant={env.memoryDataStore ? "secondary" : "default"}>
               Datos: {env.memoryDataStore ? "memoria (no Postgres)" : "Prisma / Postgres"}
             </Badge>
-            <Badge variant={env.digidMocked ? "secondary" : "default"}>
-              DIGID: {env.digidMocked ? "mock / simulado" : "llamadas reales al API"}
-            </Badge>
+            <Badge variant="outline">DIGID: siempre API remota (lib/digid.ts)</Badge>
             <Badge variant={env.digidCredsConfigured ? "default" : "destructive"}>
               Credenciales DIGID: {env.digidCredsConfigured ? "usuario + clave + token definidos" : "faltan variables"}
             </Badge>
@@ -118,9 +114,9 @@ export default async function PruebasPanelPage() {
               <code className="text-xs">DIGID_MODO</code> (T en sandbox). No subas el archivo al repo.
             </li>
             <li>
-              Quita simulación: Postgres (no <code className="text-xs">JUXA_DATA_STORE=memory</code>) y{" "}
-              <code className="text-xs">DIGID_MOCK=0</code> o sin <code className="text-xs">DIGID_MOCK=1</code>. Con solo
-              memoria el mock sigue activo salvo que fuerces <code className="text-xs">DIGID_MOCK=0</code>.
+              Usa Postgres (no <code className="text-xs">JUXA_DATA_STORE=memory</code>) para un entorno cercano a
+              producción; las llamadas a DIGID siempre usan el cliente en{" "}
+              <code className="text-xs">lib/digid.ts</code> (sin simulación local del proveedor).
             </li>
             <li>
               Postgres activo: <code className="text-xs">DATABASE_URL</code> +{" "}
@@ -144,7 +140,7 @@ export default async function PruebasPanelPage() {
             </li>
           </ol>
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" asChild>
+            <Button size="sm" variant="secondary" asChild>
               <Link href="/prueba-e2e">Abrir checklist completo (markdown)</Link>
             </Button>
             <Button size="sm" variant="outline" asChild>

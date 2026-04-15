@@ -41,7 +41,7 @@ export default async function FoliosPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Mis folios</h1>
         <p className="text-sm text-muted-foreground">
-          Créditos por usuario: cada envío a firma consume 1 crédito (2 si usas folio premium / NOM-151).
+          Créditos por usuario: cada envío a firma consume 1 folio.
         </p>
       </div>
 

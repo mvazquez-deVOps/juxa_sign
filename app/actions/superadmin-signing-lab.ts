@@ -85,7 +85,7 @@ export async function runSuperadminSigningLab(
   const fd = new FormData();
   fd.set("NameDoc", parsed.data.nameDoc);
   fd.set("IdClient", String(company.digidIdClient));
-  fd.set("UseTemplate", "false");
+  fd.set("UseTemplate", "0");
   fd.set("FileDoc", file);
 
   let docId: string;

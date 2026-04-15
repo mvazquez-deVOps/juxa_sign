@@ -71,7 +71,7 @@ export async function uploadDocument(
   const fd = new FormData();
   fd.set("NameDoc", parsed.data.nameDoc);
   fd.set("IdClient", String(company.digidIdClient));
-  fd.set("UseTemplate", "false");
+  fd.set("UseTemplate", "0");
   fd.set("FileDoc", file);
 
   try {
@@ -235,7 +235,7 @@ export async function buildCoordinatesForDocumentInOrg(
     altoPagina: p.heightPx,
     AnchoPagina: p.widthPx,
     xDoc: p.x,
-    yDoc: p.y,
+    ydoc: p.y,
     position: index,
   }));
   return buildSignatureCoordinatesJson(items);

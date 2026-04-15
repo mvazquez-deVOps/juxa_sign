@@ -23,13 +23,13 @@ export type DevRoadmapPhase = {
 };
 
 export const devRoadmapCurrentStep = {
-  title: "Fase actual: desarrollo en memoria / mock DIGID",
+  title: "Fase actual: desarrollo local y API DIGID remota",
   body:
-    "El repo está preparado para trabajar con JUXA_DATA_STORE=memory y DIGID mockeado (lib/data/mode.ts): panel completo, CI con E2E, seed que no exige Postgres. El siguiente salto operativo es Postgres persistente + prisma migrate deploy y luego integración DIGID real en staging (modo T).",
+    "El repo puede usar JUXA_DATA_STORE=memory para datos locales sin Postgres; las llamadas a DIGID siempre van al API remoto (lib/digid.ts) cuando DIGID_* está completo. El siguiente salto operativo es Postgres persistente + prisma migrate deploy y validación en staging (modo T).",
 } as const;
 
 export const devRoadmapPipelineSteps: DevRoadmapPipelineStep[] = [
-  { id: "dev", label: "Dev (memoria + mock)", kind: "current" },
+  { id: "dev", label: "Dev (memoria / local)", kind: "current" },
   { id: "staging", label: "Staging (DIGID T)", kind: "upcoming" },
   { id: "preprod", label: "Pre-prod", kind: "upcoming" },
   { id: "prod", label: "Prod (DIGID P)", kind: "upcoming" },
@@ -92,7 +92,7 @@ export const productionPhases: DevRoadmapPhase[] = [
         status: "done",
       },
       {
-        text: "Desactivar mock (DIGID_MOCK, memoria) y validar credenciales contra sandbox DIGID",
+        text: "Validar credenciales y flujo contra el API DIGID (evitar solo modo memoria en pruebas finales)",
         status: "todo",
       },
       {
@@ -178,7 +178,7 @@ export const devRoadmapWorkWithoutDb: DevRoadmapPhaseItem[] = [
     status: "todo",
   },
   {
-    text: "Ejecutar checklist manual docs/checklist-pruebas-firma.md en modo mock y anotar huecos",
+    text: "Ejecutar checklist manual docs/checklist-pruebas-firma.md y anotar huecos",
     status: "todo",
   },
   {

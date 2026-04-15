@@ -6,8 +6,6 @@ import { cn } from "@/lib/utils";
 
 const links = [
   { href: "/ayuda", label: "Inicio" },
-  { href: "/ayuda/primeros-pasos", label: "Primeros pasos" },
-  { href: "/ayuda/faq", label: "Preguntas frecuentes" },
 ] as const;
 
 export function AyudaNav() {

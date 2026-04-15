@@ -3,7 +3,7 @@ import path from "path";
 import { NextResponse } from "next/server";
 
 /**
- * PDF de prueba para enlaces de firma en modo mock (firmante sin sesión en el panel).
+ * PDF de prueba para enlaces de firma locales (firmante sin sesión en el panel).
  * Sirve el mismo archivo que /public/demo-sample.pdf con cabeceras explícitas; Safari suele
  * comportarse mejor que con el estático + ?query en desarrollo.
  */

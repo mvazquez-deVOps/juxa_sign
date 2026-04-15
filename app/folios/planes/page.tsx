@@ -5,7 +5,6 @@ import { dbFolioPacksListActive } from "@/lib/data/repository";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FolioPlanesEconomicsSection } from "@/components/folio-planes-economics-section";
 
 export const dynamic = "force-dynamic";
 
@@ -45,8 +44,6 @@ export default async function FoliosPlanesPage() {
             Paquetes activos y precio de venta al público (no es tu cartera personal).
           </p>
         </div>
-
-        <FolioPlanesEconomicsSection />
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Card>
@@ -131,8 +128,6 @@ export default async function FoliosPlanesPage() {
           Conoce nuestros planes que tenemos para ti. 
         </p>
       </div>
-
-      <FolioPlanesEconomicsSection />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {packs.length === 0 ? (

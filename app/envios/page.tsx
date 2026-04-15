@@ -24,15 +24,8 @@ export default async function EnviosPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Bandeja de envíos</h1>
           <p className="text-muted-foreground">
-            Seguimiento de documentos enviados a firmar. El estado se actualiza por notificaciones o al sincronizar
-            manualmente.
+            Seguimiento de documentos enviados a firmar. El estado se actualiza por notificaciones o al sincronizar.
           </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <EnviosSyncAllButton disabled={docs.length === 0} canSync={canSync} />
-          <Button variant="outline" asChild>
-            <Link href="/documentos">Todos los documentos</Link>
-          </Button>
         </div>
       </div>
 

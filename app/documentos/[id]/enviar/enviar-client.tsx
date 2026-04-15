@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -13,7 +13,6 @@ import {
   type SigningActionState,
 } from "@/app/actions/signing";
 import { certifyStoredDocument } from "@/app/actions/config";
-import { refreshDocumentStatus } from "@/app/actions/document";
 import { reorderDocumentPlacements } from "@/app/actions/document";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,6 +40,14 @@ const STEPS = [
   { n: 4, title: "Opciones", short: "Tipo y recordatorios" },
   { n: 5, title: "Revisar", short: "Confirmar envío" },
 ] as const;
+
+/** #rrggbb en minúsculas; null si no coincide con #RRGGBB (6 hex). */
+function parseHexColor(input: string): string | null {
+  const t = input.trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(t)) return t.toLowerCase();
+  if (/^[0-9a-fA-F]{6}$/.test(t)) return `#${t.toLowerCase()}`;
+  return null;
+}
 
 export function EnviarClient({
   canMutate: allowWrite,
@@ -81,13 +88,25 @@ export function EnviarClient({
   const [layoutUrl, setLayoutUrl] = useState<string | null>(null);
   const [pendingUrls, startUrls] = useTransition();
   const [certPending, startCert] = useTransition();
-  const [syncPending, startSync] = useTransition();
   const [reorderPending, startReorder] = useTransition();
   const [reenviarFor, setReenviarFor] = useState<string | null>(null);
   const [, startReenviar] = useTransition();
   const router = useRouter();
   const [emailTemplate, setEmailTemplate] = useState(DEFAULT_SIGNER_EMAIL_TEMPLATE);
   const [emailBulkDraft, setEmailBulkDraft] = useState("");
+
+  const [sendTypeSign, setSendTypeSign] = useState<"1" | "2">("2");
+  const [sendFolioPremium, setSendFolioPremium] = useState(false);
+  const [sendColorSign, setSendColorSign] = useState("#000000");
+  const [colorDraft, setColorDraft] = useState("#000000");
+  const [sendRemider, setSendRemider] = useState<"1" | "2" | "3">("1");
+  const [sendObserverEmail, setSendObserverEmail] = useState("");
+  const [sendObserverName, setSendObserverName] = useState("");
+  const [sendObserverPhone, setSendObserverPhone] = useState("");
+  const [sendObserverAprove, setSendObserverAprove] = useState(false);
+
+  const sendRemiderLabel = sendRemider === "1" ? "24 horas" : sendRemider === "2" ? "48 horas" : "72 horas";
+  const sendTypeSignLabel = sendTypeSign === "2" ? "Autógrafa" : "Electrónica";
 
   const placementKey = useMemo(
     () => placementRows.map((p) => `${p.id}:${p.sortOrder}`).join("|"),
@@ -149,6 +168,27 @@ export function EnviarClient({
     setKycById((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const assignmentSelectionKey = useMemo(() => {
+    const ids = [...selected].sort();
+    return ids.map((id) => `${id}:${kycById[id] ? 1 : 0}`).join(",");
+  }, [selected, kycById]);
+
+  const [syncedAssignmentKey, setSyncedAssignmentKey] = useState<string | null>(null);
+  const assignmentKeyRef = useRef(assignmentSelectionKey);
+  assignmentKeyRef.current = assignmentSelectionKey;
+
+  useEffect(() => {
+    if (assignState?.ok) {
+      setSyncedAssignmentKey(assignmentKeyRef.current);
+    }
+  }, [assignState]);
+
+  const step2SyncedWithDigid =
+    !allowWrite ||
+    (assignmentSelectionKey !== "" &&
+      syncedAssignmentKey !== null &&
+      syncedAssignmentKey === assignmentSelectionKey);
+
   const orderedLabels = orderedPlacementIds
     .map((id) => placementRows.find((p) => p.id === id))
     .filter(Boolean) as typeof placementRows;
@@ -178,6 +218,17 @@ export function EnviarClient({
     return null;
   };
 
+  const ensureColorDraftCommitted = (): boolean => {
+    const p = parseHexColor(colorDraft);
+    if (p) {
+      setSendColorSign(p);
+      setColorDraft(p);
+      return true;
+    }
+    toast.error("Color de firma inválido. Usa #RRGGBB (6 hexadecimales), p. ej. #000000.");
+    return false;
+  };
+
   const goNext = () => {
     if (step < 5) {
       if (step === 1 && validationMessage()) {
@@ -188,10 +239,15 @@ export function EnviarClient({
         toast.error(validationMessage()!);
         return;
       }
+      if (step === 2 && allowWrite && !step2SyncedWithDigid) {
+        toast.error("Sincroniza la asignación con DIGID antes de continuar.");
+        return;
+      }
       if (step === 3 && validationMessage()) {
         toast.error(validationMessage()!);
         return;
       }
+      if (step === 4 && !ensureColorDraftCommitted()) return;
       setStep((s) => Math.min(5, s + 1));
     }
   };
@@ -249,7 +305,14 @@ export function EnviarClient({
           <button
             key={s.n}
             type="button"
-            onClick={() => setStep(s.n)}
+            onClick={() => {
+              if (allowWrite && s.n >= 3 && !step2SyncedWithDigid) {
+                toast.error("Sincroniza la asignación con DIGID en el paso 2 antes de avanzar.");
+                return;
+              }
+              if (step === 4 && s.n >= 5 && !ensureColorDraftCommitted()) return;
+              setStep(s.n);
+            }}
             className={cn(
               "rounded-lg border px-3 py-2 text-left text-sm transition-colors",
               step === s.n
@@ -268,55 +331,38 @@ export function EnviarClient({
         <Card>
           <CardHeader>
             <CardTitle>Documento y requisitos</CardTitle>
-            <CardDescription>
-              Alineado con el flujo DIGID: documento creado, marcas en el PDF y firmantes listos antes de enviar.
-            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
-            <p>
-              <span className="font-medium text-foreground">Nombre:</span> {documentName}
-            </p>
             <ul className="list-inside list-disc space-y-1 text-muted-foreground">
               <li>
-                Marcas en el visor:{" "}
-                <strong className="text-foreground">{placementsCount}</strong>
+                <span className="font-medium text-foreground">Nombre:</span>{" "}
+                <span className="font-normal">{documentName}</span>
+              </li>
+              <li>
+                <span className="font-medium text-foreground">Marcas en el visor:</span>{" "}
+                <span className="font-normal">{placementsCount}</span>
                 {placementsCount === 0 ? (
                   <span className="text-destructive"> — ve al visor y coloca al menos una.</span>
                 ) : null}
               </li>
-              <li>Sincroniza el estado remoto si acabas de cambiar algo en DIGID.</li>
+              <li>
+                <span className="font-medium text-foreground">Firmantes asignados:</span>{" "}
+                <span className="font-normal">{signatories.filter((s) => s.assigned).length}</span>
+              </li>
             </ul>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" asChild>
-                <Link href={`/documentos/${documentId}`}>Abrir visor PDF</Link>
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={syncPending}
-                onClick={() =>
-                  startSync(async () => {
-                    const r = await refreshDocumentStatus(documentId);
-                    if (r.ok) {
-                      toast.success("Estado remoto actualizado");
-                      router.refresh();
-                    } else toast.error(r.message ?? "No se pudo sincronizar");
-                  })
-                }
-              >
-                {syncPending ? "Sincronizando…" : "Actualizar estado remoto"}
+                <Link href={`/documentos/${documentId}`}>Regresar al visor PDF</Link>
               </Button>
             </div>
             {validationMessage() ? (
               <p className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-amber-950 dark:text-amber-100">
                 {validationMessage()}
               </p>
-            ) : (
-              <p className="text-muted-foreground">Requisitos mínimos cubiertos para continuar.</p>
-            )}
+            ) : null}
+            
             <Button type="button" onClick={goNext}>
-              Siguiente: firmantes
+              Siguiente: asignar firmantes
             </Button>
           </CardContent>
         </Card>
@@ -327,8 +373,8 @@ export function EnviarClient({
           <CardHeader>
             <CardTitle>Firmantes y KYC</CardTitle>
             <CardDescription>
-              Sustituye la asignación en el proveedor por la selección actual. Cada firmante con marca debe tener correo o
-              teléfono.
+              Confirma la asignación de firmantes y la verificación de identidad (KYC) antes de continuar. Pulsa
+              &quot;Confirmar asignación&quot; para aplicar los cambios.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -383,7 +429,7 @@ export function EnviarClient({
                 })}
               </div>
               <Button type="submit" disabled={!allowWrite || assignPending || selected.size === 0}>
-                {assignPending ? "Asignando…" : "Sincronizar asignación con DIGID"}
+                {assignPending ? "Asignando…" : "Confirmar asignación"}
               </Button>
               <ActionErrorDetails
                 failed={assignState != null && !assignState.ok}
@@ -394,8 +440,17 @@ export function EnviarClient({
               <Button type="button" variant="outline" onClick={goPrev}>
                 Anterior
               </Button>
-              <Button type="button" onClick={goNext}>
-                Siguiente: marcas
+              <Button
+                type="button"
+                disabled={allowWrite && !step2SyncedWithDigid}
+                title={
+                  allowWrite && !step2SyncedWithDigid
+                    ? "Primero sincroniza la asignación con DIGID"
+                    : undefined
+                }
+                onClick={goNext}
+              >
+                Siguiente: ordenar marcas
               </Button>
             </div>
           </CardContent>
@@ -407,8 +462,7 @@ export function EnviarClient({
           <CardHeader>
             <CardTitle>Marcas y orden de firma</CardTitle>
             <CardDescription>
-              El orden define el campo <code className="text-xs">position</code> enviado a DIGID (validar en sandbox el
-              comportamiento secuencial). Usa las flechas para reordenar.
+              Define el orden de las marcas en el documento. Usa las flechas para reordenar.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -458,7 +512,7 @@ export function EnviarClient({
                 Anterior
               </Button>
               <Button type="button" onClick={goNext}>
-                Siguiente: opciones
+                Siguiente: configurar envío
               </Button>
             </div>
           </CardContent>
@@ -468,13 +522,155 @@ export function EnviarClient({
       {step === 4 ? (
         <Card>
           <CardHeader>
-            <CardTitle>Opciones de envío (DIGID)</CardTitle>
-            <CardDescription>Tipo de firma, folio premium, color, recordatorios y observador opcional.</CardDescription>
+            <CardTitle>Opciones de envío</CardTitle>
+            <CardDescription>
+              Configura el tipo de firma, el folio premium, el color, los recordatorios y el observador.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Los datos se envían en el paso siguiente con el botón &quot;Enviar a firmar&quot;.
-            </p>
+            <div className="space-y-2">
+              <Label htmlFor="typeSign">Tipo de firma</Label>
+              <select
+                id="typeSign"
+                value={sendTypeSign}
+                onChange={(e) => setSendTypeSign(e.target.value === "1" ? "1" : "2")}
+                disabled={!allowWrite}
+                className={cn(
+                  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  !allowWrite && "cursor-not-allowed opacity-60",
+                )}
+              >
+                <option value="1">Electrónica</option>
+                <option value="2">Autógrafa</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="folioPremium"
+                checked={sendFolioPremium}
+                onChange={(e) => setSendFolioPremium(e.target.checked)}
+                disabled={!allowWrite}
+                className="h-4 w-4"
+              />
+              <Label htmlFor="folioPremium">Folio premium / NOM-151</Label>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="colorSign">Color firma</Label>
+              <div className="flex flex-wrap items-center gap-3">
+                <input
+                  type="color"
+                  id="colorSignPicker"
+                  className={cn(
+                    "h-10 w-14 shrink-0 cursor-pointer rounded border border-input bg-background disabled:cursor-not-allowed disabled:opacity-60",
+                  )}
+                  value={parseHexColor(colorDraft) ?? parseHexColor(sendColorSign) ?? "#000000"}
+                  onChange={(e) => {
+                    const v = e.target.value.toLowerCase();
+                    setSendColorSign(v);
+                    setColorDraft(v);
+                  }}
+                  disabled={!allowWrite}
+                  aria-label="Selector de color de firma"
+                />
+                <div
+                  className="h-10 w-10 shrink-0 rounded border border-input shadow-inner"
+                  style={{
+                    backgroundColor: parseHexColor(colorDraft) ?? parseHexColor(sendColorSign) ?? "#000000",
+                  }}
+                  title="Vista previa"
+                  aria-hidden
+                />
+                <Input
+                  id="colorSign"
+                  className="min-w-[8rem] flex-1 font-mono text-sm"
+                  value={colorDraft}
+                  onChange={(e) => setColorDraft(e.target.value)}
+                  onBlur={() => {
+                    const p = parseHexColor(colorDraft);
+                    if (p) {
+                      setSendColorSign(p);
+                      setColorDraft(p);
+                    } else {
+                      toast.error("Formato inválido. Usa #RRGGBB (6 hexadecimales).");
+                      setColorDraft(sendColorSign);
+                    }
+                  }}
+                  placeholder="#000000"
+                  disabled={!allowWrite}
+                  autoComplete="off"
+                  spellCheck={false}
+                  aria-describedby="colorSign-hint"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="remider">Recordatorio al firmante</Label>
+              <select
+                id="remider"
+                value={sendRemider}
+                onChange={(e) => setSendRemider(e.target.value as "1" | "2" | "3")}
+                disabled={!allowWrite}
+                className={cn(
+                  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  !allowWrite && "cursor-not-allowed opacity-60",
+                )}
+              >
+                <option value="1">24 horas</option>
+                <option value="2">48 horas</option>
+                <option value="3">72 horas</option>
+              </select>
+            </div>
+            <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
+              <p className="text-sm font-medium">Observador (opcional)</p>
+              <p className="text-xs text-muted-foreground">
+                Si indicas correo del observador, el nombre es obligatorio.
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="observerEmail">Correo del observador</Label>
+                <Input
+                  id="observerEmail"
+                  type="email"
+                  autoComplete="off"
+                  placeholder="observador@empresa.com"
+                  value={sendObserverEmail}
+                  onChange={(e) => setSendObserverEmail(e.target.value)}
+                  disabled={!allowWrite}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="observerName">Nombre del observador</Label>
+                <Input
+                  id="observerName"
+                  placeholder="Nombre completo"
+                  value={sendObserverName}
+                  onChange={(e) => setSendObserverName(e.target.value)}
+                  disabled={!allowWrite}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="observerPhone">Teléfono del observador</Label>
+                <Input
+                  id="observerPhone"
+                  type="tel"
+                  placeholder="Opcional"
+                  value={sendObserverPhone}
+                  onChange={(e) => setSendObserverPhone(e.target.value)}
+                  disabled={!allowWrite}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="observerAprove"
+                  checked={sendObserverAprove}
+                  onChange={(e) => setSendObserverAprove(e.target.checked)}
+                  disabled={!allowWrite}
+                  className="h-4 w-4"
+                />
+                <Label htmlFor="observerAprove">Requiere aprobación del observador</Label>
+              </div>
+            </div>
             <div className="flex flex-wrap gap-2">
               <Button type="button" variant="outline" onClick={goPrev}>
                 Anterior
@@ -491,7 +687,9 @@ export function EnviarClient({
         <Card>
           <CardHeader>
             <CardTitle>Revisión y envío</CardTitle>
-            <CardDescription>Confirma los datos antes de llamar a <code className="text-xs">send_doc</code> en DIGID.</CardDescription>
+            <CardDescription>
+              Comprueba el resumen y envía a firmar. Las opciones fueron definidas en pasos anteriores.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <ul className="space-y-1 text-sm text-muted-foreground">
@@ -499,129 +697,87 @@ export function EnviarClient({
                 Firmantes seleccionados: <strong className="text-foreground">{selected.size}</strong>
               </li>
               <li>
-                Marcas: <strong className="text-foreground">{placementsCount}</strong> (orden {orderedPlacementIds.length} posiciones)
+                Marcas: <strong className="text-foreground">{placementsCount}</strong> (orden {orderedPlacementIds.length}{" "}
+                posiciones)
               </li>
-              {validationMessage() ? (
+              <li>
+                Tipo de firma: <strong className="text-foreground">{sendTypeSignLabel}</strong>
+              </li>
+              <li>
+                Folio premium / NOM-151:{" "}
+                <strong className="text-foreground">{sendFolioPremium ? "Sí" : "No"}</strong>
+              </li>
+              <li>
+                Color firma: <strong className="text-foreground">{sendColorSign.trim() || "—"}</strong>
+              </li>
+              <li>
+                Recordatorio al firmante: <strong className="text-foreground">{sendRemiderLabel}</strong>
+              </li>
+              <li>
+                Observador:{" "}
+                {sendObserverEmail.trim() ? (
+                  <>
+                    <strong className="text-foreground">
+                      {sendObserverName.trim() || "(sin nombre)"} · {sendObserverEmail.trim()}
+                    </strong>
+                    {sendObserverPhone.trim() ? (
+                      <span className="text-muted-foreground"> · {sendObserverPhone.trim()}</span>
+                    ) : null}
+                    {sendObserverAprove ? (
+                      <span className="block text-xs text-muted-foreground">Requiere aprobación del observador: sí</span>
+                    ) : null}
+                  </>
+                ) : (
+                  <strong className="text-foreground">—</strong>
+                )}
+              </li>
+              {sendState?.ok ? (
+                <li className="text-emerald-700 dark:text-emerald-400">
+                  {sendState.message ?? "Documento enviado a firmar."}
+                </li>
+              ) : validationMessage() ? (
                 <li className="text-destructive">{validationMessage()}</li>
               ) : (
-                <li className="text-emerald-700 dark:text-emerald-400">Listo para enviar según las validaciones del panel.</li>
+                <li className="text-emerald-700 dark:text-emerald-400">Listo para enviar.</li>
               )}
             </ul>
 
-            <form action={sendAction} className="space-y-4 border-t pt-4">
-              <input type="hidden" name="documentId" value={documentId} />
-              <div className="space-y-2">
-                <Label htmlFor="typeSign">Tipo de firma</Label>
-                <select
-                  id="typeSign"
-                  name="typeSign"
-                  defaultValue="2"
-                  className={cn(
-                    "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  )}
-                >
-                  <option value="1">Electrónica</option>
-                  <option value="2">Autógrafa</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-2">
-                <input type="checkbox" id="folioPremium" name="folioPremium" className="h-4 w-4" />
-                <Label htmlFor="folioPremium">Folio premium / NOM-151</Label>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="colorSign">Color firma (#RRGGBB)</Label>
-                <Input id="colorSign" name="colorSign" placeholder="#000000" defaultValue="#000000" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="remider">Recordatorio al firmante</Label>
-                <select
-                  id="remider"
-                  name="remider"
-                  defaultValue="1"
-                  className={cn(
-                    "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  )}
-                >
-                  <option value="1">24 horas</option>
-                  <option value="2">48 horas</option>
-                  <option value="3">72 horas</option>
-                </select>
-              </div>
-              <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
-                <p className="text-sm font-medium">Observador (opcional)</p>
-                <p className="text-xs text-muted-foreground">
-                  Si indicas correo del observador, el nombre es obligatorio. Con{" "}
-                  <code className="text-xs">JUXA_NOTIFY_SIGNING=1</code> se puede enviar copia por correo (ver{" "}
-                  <code className="text-xs">.env.example</code>).
-                </p>
-                <div className="space-y-2">
-                  <Label htmlFor="observerEmail">Correo del observador</Label>
-                  <Input
-                    id="observerEmail"
-                    name="observerEmail"
-                    type="email"
-                    autoComplete="off"
-                    placeholder="observador@empresa.com"
-                    disabled={!allowWrite}
-                  />
+            {!sendState?.ok ? (
+              <form action={sendAction} className="space-y-4 border-t pt-4">
+                <input type="hidden" name="documentId" value={documentId} />
+                <input type="hidden" name="typeSign" value={sendTypeSign} />
+                <input type="hidden" name="colorSign" value={sendColorSign} />
+                <input type="hidden" name="remider" value={sendRemider} />
+                {sendFolioPremium ? <input type="hidden" name="folioPremium" value="on" /> : null}
+                <input type="hidden" name="observerEmail" value={sendObserverEmail} />
+                <input type="hidden" name="observerName" value={sendObserverName} />
+                <input type="hidden" name="observerPhone" value={sendObserverPhone} />
+                {sendObserverAprove ? <input type="hidden" name="observerAprove" value="on" /> : null}
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="outline" onClick={goPrev}>
+                    Anterior
+                  </Button>
+                  <Button type="submit" disabled={!allowWrite || sendPending || Boolean(validationMessage())}>
+                    {sendPending ? "Enviando…" : "Enviar a firmar"}
+                  </Button>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="observerName">Nombre del observador</Label>
-                  <Input id="observerName" name="observerName" placeholder="Nombre completo" disabled={!allowWrite} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="observerPhone">Teléfono del observador</Label>
-                  <Input id="observerPhone" name="observerPhone" type="tel" placeholder="Opcional" disabled={!allowWrite} />
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="observerAprove"
-                    name="observerAprove"
-                    className="h-4 w-4"
-                    disabled={!allowWrite}
-                  />
-                  <Label htmlFor="observerAprove">Requiere aprobación del observador</Label>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" onClick={goPrev}>
-                  Anterior
-                </Button>
-                <Button type="submit" disabled={!allowWrite || sendPending || Boolean(validationMessage())}>
-                  {sendPending ? "Enviando…" : "Enviar a firmar"}
-                </Button>
-              </div>
-              <ActionErrorDetails failed={sendState != null && !sendState.ok} message={sendState?.message} />
-            </form>
+                <ActionErrorDetails failed={sendState != null && !sendState.ok} message={sendState?.message} />
+              </form>
+            ) : null}
           </CardContent>
         </Card>
       ) : null}
 
+      {step === 5 ? (
       <Card>
         <CardHeader>
           <CardTitle>Después del envío: URLs y constancia</CardTitle>
           <CardDescription>
-            Enlaces por firmante (API 11), pantalla única (API 7), CSV y plantilla de correo manual. Reenvío de invitación
-            (API 12).
+            Usa nuestras herramientas para generar URLs por firmante, descargar CSV y generar constancia.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={syncPending}
-              onClick={() =>
-                startSync(async () => {
-                  await refreshDocumentStatus(documentId);
-                  toast.success("Estado remoto actualizado");
-                  router.refresh();
-                })
-              }
-            >
-              {syncPending ? "Sincronizando…" : "Actualizar estado remoto"}
-            </Button>
             <Button
               type="button"
               variant="secondary"
@@ -744,12 +900,7 @@ export function EnviarClient({
 
           <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
             <div>
-              <p className="text-sm font-medium">Plantilla de correo (manual)</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Variables <code className="rounded bg-muted px-1">{"{nombre}"}</code> y{" "}
-                <code className="rounded bg-muted px-1">{"{url}"}</code>. Copia el texto en tu cliente de correo o
-                automatización.
-              </p>
+              <p className="text-sm font-medium">Plantilla de correo para reenvió de invitación</p>
             </div>
             <Textarea
               value={emailTemplate}
@@ -814,6 +965,7 @@ export function EnviarClient({
           </Button>
         </CardContent>
       </Card>
+      ) : null}
     </div>
   );
 }

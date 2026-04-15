@@ -1,10 +1,10 @@
 /**
- * URL base pública (sin barra final) para armar enlaces a PDFs estáticos y mocks.
+ * URL base pública (sin barra final) para armar enlaces a PDFs estáticos y enlaces de firma.
  * Evita cadenas vacías y localhost sin puerto (que apuntarían al :80 equivocado).
  */
 export function appBaseUrl(): string {
   let raw = (process.env.NEXT_PUBLIC_APP_URL ?? "").trim().replace(/\/$/, "");
-  // Evita bases rotas tipo http://localhost%ruta (falta :puerto/); rompe UrlDocumento en mocks.
+  // Evita bases rotas tipo http://localhost%ruta (falta :puerto/); rompe UrlDocumento en dev.
   const broken = /^https?:\/\/localhost%([^/]+\.pdf)$/i.exec(raw);
   if (broken) {
     raw = `http://localhost:3333/${broken[1].replace(/^\/+/, "")}`;
@@ -24,7 +24,7 @@ export function appBaseUrl(): string {
 }
 
 /**
- * Origen para enlaces de firma en correos (mock DIGID) y textos que deben coincidir con donde corres `npm run dev`.
+ * Origen para enlaces de firma en correos y textos que deben coincidir con donde corres `npm run dev`.
  * Prioriza `JUXA_LOCAL_SIGNING_BASE_URL` en servidor para no depender solo de `NEXT_PUBLIC_APP_URL` (p. ej. puerto 3000 vs 3333).
  */
 export function signingLinkBaseUrl(): string {

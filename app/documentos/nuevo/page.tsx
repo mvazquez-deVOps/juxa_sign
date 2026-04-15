@@ -1,5 +1,5 @@
 import { dbCompaniesFindManyByRazon, dbEnsureDefaultDemoClientIfEmpty } from "@/lib/data/repository";
-import { isDigidMocked, isMemoryDataStore } from "@/lib/data/mode";
+import { isMemoryDataStore } from "@/lib/data/mode";
 import { canMutate } from "@/lib/gate";
 import { requireOrgContext } from "@/lib/org-scope";
 import { redirect } from "next/navigation";
@@ -21,7 +21,7 @@ export default async function NuevoDocumentoPage({ searchParams }: Props) {
   const autoDemoClientHint =
     rows.length === 1 &&
     rows[0]?.razonSocial === "Cliente de prueba Juxa" &&
-    (isMemoryDataStore() || isDigidMocked());
+    isMemoryDataStore();
   const preselectCompanyId =
     typeof sp.companyId === "string" && sp.companyId.length > 0 ? sp.companyId : undefined;
   return (

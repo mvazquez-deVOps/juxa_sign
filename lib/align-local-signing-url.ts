@@ -6,7 +6,7 @@ function isLoopbackHostname(hostname: string): boolean {
 }
 
 /**
- * En desarrollo, si el mock devolvió `http://localhost:PUERTO_INCORRECTO/...` y el panel se abrió con otro
+ * En desarrollo, si el proveedor devolvió `http://localhost:PUERTO_INCORRECTO/...` y el panel se abrió con otro
  * puerto, Safari (y otros) fallan al abrir el enlace. Sustituye el origen por el `Host` de la petición actual.
  */
 export async function alignLocalSigningUrlWithRequest(signingUrl: string): Promise<string> {

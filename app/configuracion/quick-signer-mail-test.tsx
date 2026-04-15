@@ -52,7 +52,7 @@ export function QuickSignerMailTest({ disabled }: { disabled?: boolean }) {
         {pending ? "Enviando…" : "Enviar correo de prueba"}
       </Button>
       <p className="text-xs text-muted-foreground">
-        Mismo formato que “Firma pendiente”: enlace a <code className="rounded bg-muted px-1">/firma-prueba</code> (mock).
+        Mismo formato que “Firma pendiente”: enlace a <code className="rounded bg-muted px-1">/firma-prueba</code> (demo local).
         No sustituye un envío real a DIGID.
       </p>
     </form>

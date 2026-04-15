@@ -83,7 +83,7 @@ export default async function HojaDeRutaDevsPage() {
             <p className="font-medium text-foreground">DIGID y webhooks</p>
             <ul className="mt-1 list-inside list-disc space-y-1">
               <li>
-                Cliente HTTP y tipos en <code className="text-xs">lib/digid.ts</code>; mock según variables de entorno.
+                Cliente HTTP y tipos en <code className="text-xs">lib/digid.ts</code> (siempre API remoto con <code className="text-xs">DIGID_*</code> completo).
               </li>
               <li>
                 Entrada de eventos: <code className="text-xs">app/api/webhooks/digid/route.ts</code> (URL pública HTTPS +{" "}
@@ -139,8 +139,8 @@ export default async function HojaDeRutaDevsPage() {
               <code className="text-xs">lib/store/memory-store.ts</code> si <code className="text-xs">JUXA_DATA_STORE=memory</code>.
             </li>
             <li>
-              Integración con el proveedor de firma (cliente HTTP en el repo); con mock de servidor o modo memoria, el
-              módulo de simulación devuelve respuestas sintéticas.
+              Integración con el proveedor de firma vía <code className="text-xs">lib/digid.ts</code>: las peticiones van al host configurado en{" "}
+              <code className="text-xs">DIGID_*</code> (modo memoria solo afecta dónde persisten tus datos locales, no sustituye al API DIGID).
             </li>
             <li>Demo con contraseña: middleware + cookie firmada; sesión sintética vía{" "}
               <code className="text-xs">resolveSession()</code> cuando hay <code className="text-xs">DEMO_PASSWORD</code> (ver{" "}
@@ -281,8 +281,8 @@ export default async function HojaDeRutaDevsPage() {
               <code className="text-xs">DEMO_PASSWORD</code> + <code className="text-xs">DEMO_AUTH_SECRET</code>.
             </li>
             <li>
-              En modo memoria no hacen falta credenciales reales del proveedor: las llamadas usan mock automático; PDF de
-              prueba en <code className="text-xs">public/mock-doc.pdf</code>.
+              Aun en modo memoria necesitas <code className="text-xs">DIGID_*</code> completas para flujos que llamen al proveedor; PDF de prueba en{" "}
+              <code className="text-xs">public/mock-doc.pdf</code> para demos de enlace.
             </li>
             <li>Los datos se pierden al reiniciar el proceso Node: no usar para datos reales.</li>
           </ol>
@@ -303,9 +303,9 @@ export default async function HojaDeRutaDevsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>6. Camino a solo DIGID + pruebas de sistema</CardTitle>
+          <CardTitle>6. Camino a Postgres + pruebas de sistema con DIGID</CardTitle>
           <CardDescription>
-            Checklist para dejar mock/memoria y validar contra el proveedor real en un entorno controlado.
+            Checklist para validar contra el proveedor en un entorno controlado (Postgres, credenciales, URLs).
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 text-sm leading-relaxed text-muted-foreground">
@@ -320,9 +320,8 @@ export default async function HojaDeRutaDevsPage() {
               flujo equivalente) para que el esquema coincida con el código.
             </li>
             <li>
-              Conexión al proveedor: desactivar o acotar simulación (<code className="text-xs">DIGID_MOCK</code>,{" "}
-              <code className="text-xs">JUXA_DATA_STORE</code>) según el entorno; confirmar URLs y credenciales contra{" "}
-              <code className="text-xs">docs/api-digid.md</code>.
+              Conexión al proveedor: confirmar URLs y credenciales contra <code className="text-xs">docs/api-digid.md</code>;
+              el cliente en <code className="text-xs">lib/digid.ts</code> solo usa el API remoto (sin mock local).
             </li>
             <li>
               Pruebas: suite E2E en <code className="text-xs">e2e/</code> y <code className="text-xs">playwright.config.ts</code>; guía

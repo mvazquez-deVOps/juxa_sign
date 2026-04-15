@@ -2,10 +2,9 @@ import { notFound } from "next/navigation";
 import { unstable_noStore as noStore } from "next/cache";
 import Link from "next/link";
 import { dbFindDocumentDetailInOrg, dbSignatoryFindManyByCompany } from "@/lib/data/repository";
-import { canMutateSigningFlow, canSyncRemoteDocumentStatus } from "@/lib/gate";
+import { canMutateSigningFlow } from "@/lib/gate";
 import { requireOrgContext } from "@/lib/org-scope";
 import { DocumentDetailClient } from "./document-detail-client";
-import { DocumentPageHeaderActions } from "./document-page-header-actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -17,7 +16,6 @@ export default async function DocumentDetailPage({ params }: Props) {
   noStore();
   const { organizationId, role } = await requireOrgContext();
   const allowWrite = canMutateSigningFlow(role);
-  const canSyncRemote = canSyncRemoteDocumentStatus(role);
   const { id } = await params;
   const doc = await dbFindDocumentDetailInOrg(id, organizationId);
   if (!doc) notFound();
@@ -42,7 +40,6 @@ export default async function DocumentDetailPage({ params }: Props) {
           <Button variant="outline" asChild>
             <Link href="/documentos">Volver</Link>
           </Button>
-          <DocumentPageHeaderActions documentId={doc.id} canSync={canSyncRemote} />
           {allowWrite ? (
             <Button asChild variant="default">
               <Link href={`/documentos/${doc.id}/enviar`}>Enviar a firmar</Link>
@@ -101,7 +98,6 @@ export default async function DocumentDetailPage({ params }: Props) {
 
       <DocumentDetailClient
         canMutate={allowWrite}
-        canSyncRemote={canSyncRemote}
         documentId={doc.id}
         companyId={doc.companyId}
         companyRazonSocial={doc.company.razonSocial}

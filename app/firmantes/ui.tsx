@@ -80,12 +80,8 @@ export function FirmantesClient({
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        <span className="font-medium text-foreground">Clientes</span> (empresa o persona moral) se registran en{" "}
-        <Link href="/empresas" className="text-primary underline-offset-4 hover:underline">
-          Clientes
-        </Link>
-        . Aquí cargas a las <span className="font-medium text-foreground">personas que firman</span> para el Id. de
-        cliente seleccionado; sin firmantes no podrás completar el envío a firma.
+        Aquí cargas a las <span className="font-medium text-foreground">personas que firman</span> para el
+        cliente o empresa seleccionado; sin firmantes no podrás completar el envío a firma.
       </p>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-2">
@@ -194,16 +190,15 @@ export function FirmantesClient({
       <Card>
         <CardHeader>
           <CardTitle>Listado</CardTitle>
-          <CardDescription>Identificadores remotos para asignación y coordenadas.</CardDescription>
+          <CardDescription>Personas que firmarán el documento.</CardDescription>
         </CardHeader>
         <CardContent>
           {signatories.length === 0 ? (
             <div className="flex flex-col items-center gap-4 py-10 text-center">
               <div className="max-w-md space-y-2 text-sm">
-                <p className="font-medium text-foreground">El cliente ya está en el panel; faltan firmantes</p>
                 <p className="text-muted-foreground">
-                  «{selectedRazon}» es el cliente en el proveedor. Para iniciar la firma necesitas al menos una persona
-                  con nombre y correo o teléfono en esta lista (no se crean solas al registrar el cliente).
+                  Para iniciar la firma necesitas al menos una persona
+                  con nombre y correo o teléfono en esta lista.
                 </p>
               </div>
               <div className="flex flex-wrap justify-center gap-2">
@@ -212,9 +207,6 @@ export function FirmantesClient({
                     Dar de alta el primero
                   </Button>
                 ) : null}
-                <Button variant="outline" size="sm" asChild>
-                  <Link href="/prueba-e2e">Orden en guía E2E</Link>
-                </Button>
               </div>
             </div>
           ) : (
