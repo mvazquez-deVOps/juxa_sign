@@ -97,7 +97,7 @@ export function DocumentDetailClient({
           <div>
             <CardTitle>Visor PDF</CardTitle>
             <CardDescription>
-              Activa “Marcar firma”, elige "Firmante activo" y haz clic donde va la firma sobre el PDF.
+              Activa “Marcar firma”, elige “Firmante activo” y haz clic donde va la firma sobre el PDF.
             </CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
