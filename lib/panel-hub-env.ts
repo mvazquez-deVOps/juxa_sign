@@ -1,9 +1,8 @@
-import { isDigidMocked, isMemoryDataStore } from "@/lib/data/mode";
+import { isMemoryDataStore } from "@/lib/data/mode";
 
 /** Resumen seguro para la UI (sin secretos). */
 export function getPanelHubEnvSummary(): {
   memoryDataStore: boolean;
-  digidMocked: boolean;
   digidModo: string;
   digidApiHost: string;
   digidLegacyHost: string;
@@ -16,7 +15,6 @@ export function getPanelHubEnvSummary(): {
   const legacyHost = safeUrlHost(process.env.DIGID_LEGACY_BASE);
   return {
     memoryDataStore: isMemoryDataStore(),
-    digidMocked: isDigidMocked(),
     digidModo,
     digidApiHost: apiHost,
     digidLegacyHost: legacyHost,

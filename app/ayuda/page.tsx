@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookOpen, HelpCircle, ListOrdered } from "lucide-react";
+import { HelpCircle, ListOrdered } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const metadata = {
@@ -46,21 +46,6 @@ export default function AyudaIndexPage() {
           </CardContent>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader>
-          <BookOpen className="mb-2 h-8 w-8 text-primary" />
-          <CardTitle className="text-lg">Flujo de producto (detalle)</CardTitle>
-          <CardDescription>
-            Vista técnica y diagrama del recorrido en el panel; útil para capacitación o soporte interno.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Link href="/flujo-producto" className="text-sm font-medium text-primary underline">
-            Abrir flujo de producto
-          </Link>
-        </CardContent>
-      </Card>
     </div>
   );
 }

@@ -19,10 +19,6 @@ const faqs: FaqItem[] = [
     ),
   },
   {
-    q: "¿Por qué el visor del PDF pide zoom al 100 %?",
-    a: "Las marcas de firma guardan coordenadas en píxeles respecto al tamaño mostrado. Si cambias el zoom después de colocarlas, la posición puede no coincidir con lo que espera el motor de firma. Deja el zoom en 100 % antes de marcar.",
-  },
-  {
     q: "¿Dónde veo el estado de un envío?",
     a: (
       <>
@@ -48,6 +44,17 @@ const faqs: FaqItem[] = [
         Son créditos de uso asociados a envíos según el tipo de firma. Revisa saldo y movimientos en{" "}
         <Link href="/folios" className="font-medium text-primary underline">Mis folios</Link>. Los administradores pueden
         acreditar folios a miembros del equipo desde configuración.
+      </>
+    ),
+  },
+  {
+    q: "¿Qué es un KYC?",
+    a: (
+      <>
+        <strong>KYC</strong> significa <em>Know Your Customer</em> (conocimiento del cliente): prácticas para verificar la
+        identidad de una persona antes de operaciones sensibles. En el flujo de envío a firma, al asignar firmantes puedes
+        marcar si aplica verificación de identidad según cada caso; esa información se sincroniza con el proveedor junto
+        con la asignación.
       </>
     ),
   },

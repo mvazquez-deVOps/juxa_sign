@@ -4,13 +4,14 @@ import { dbDocumentsFindManyWithCompany } from "@/lib/data/repository";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DocumentosDataTable } from "@/components/tables/documentos-data-table";
-import { canMutate, canMutateSigningFlow } from "@/lib/gate";
+import { canMutate, canMutateSigningFlow, canSyncRemoteDocumentStatus } from "@/lib/gate";
 import { requireOrgContext } from "@/lib/org-scope";
 
 export default async function DocumentosPage() {
   const { organizationId, role } = await requireOrgContext();
   const allowWrite = canMutate(role);
   const showEnviarLink = canMutateSigningFlow(role);
+  const canSyncRemote = canSyncRemoteDocumentStatus(role);
   const docs = await dbDocumentsFindManyWithCompany(organizationId, "createdAt", "desc");
 
   return (
@@ -46,6 +47,7 @@ export default async function DocumentosPage() {
           ) : (
             <DocumentosDataTable
               showEnviarLink={showEnviarLink}
+              canSyncRemote={canSyncRemote}
               data={docs.map((d) => ({
                 id: d.id,
                 nameDoc: d.nameDoc,

@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { addPlacement, clearPlacements, refreshDocumentStatus } from "@/app/actions/document";
+import { addPlacement, clearPlacements } from "@/app/actions/document";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -26,7 +26,6 @@ const PdfSignViewer = dynamic(() => import("@/components/pdf-sign-viewer"), {
 
 export function DocumentDetailClient({
   canMutate: allowWrite,
-  canSyncRemote,
   documentId,
   companyId,
   companyRazonSocial,
@@ -35,7 +34,6 @@ export function DocumentDetailClient({
   placements,
 }: {
   canMutate: boolean;
-  canSyncRemote: boolean;
   documentId: string;
   companyId: string;
   companyRazonSocial: string;
@@ -99,8 +97,7 @@ export function DocumentDetailClient({
           <div>
             <CardTitle>Visor PDF</CardTitle>
             <CardDescription>
-              Activa “Marcar firma”, elige firmante y haz clic donde va la firma. El PDF se muestra ajustado al ancho
-              del panel; las coordenadas se toman sobre esa vista (no hay zoom manual en el visor).
+              Activa “Marcar firma”, elige "Firmante activo" y haz clic donde va la firma sobre el PDF.
             </CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -110,36 +107,11 @@ export function DocumentDetailClient({
               disabled={!allowWrite}
               onClick={() => allowWrite && setMarkMode((m) => !m)}
             >
-              {markMode ? "Modo marcar: ON" : "Modo marcar: OFF"}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!canSyncRemote || pending}
-              onClick={() =>
-                startTransition(async () => {
-                  const r = await refreshDocumentStatus(documentId);
-                  if (r.ok) {
-                    toast.success("Estado actualizado");
-                    router.refresh();
-                  } else toast.error(r.message ?? "No se pudo sincronizar");
-                })
-              }
-            >
-              Sincronizar estado
+              {markMode ? "Marcar firma: ON" : "Modo marcar: OFF"}
             </Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          {fileUrl ? (
-            <div
-              role="status"
-              className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100"
-            >
-              <strong>Importante:</strong> coloca las marcas con el PDF tal como se ve en pantalla (ajustado al ancho
-              del panel). Si redimensionas mucho la ventana, revisa las marcas antes de enviar a firmar.
-            </div>
-          ) : null}
           {!fileUrl ? (
             <p className="text-muted-foreground">Este documento no tiene URL de archivo en el proveedor.</p>
           ) : (

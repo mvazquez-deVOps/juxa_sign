@@ -59,7 +59,7 @@ const steps = [
   },
   {
     n: 6,
-    title: "Webhooks y configuración (administradores)",
+    title: "Configuración (administradores)",
     body: (
       <>
         Quien administre la organización puede revisar <Link href="/configuracion">Configuración</Link> para

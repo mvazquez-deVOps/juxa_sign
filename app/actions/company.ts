@@ -70,6 +70,7 @@ export async function createCompany(
       RFC: parsed.data.rfc,
       Email: parsed.data.email,
     });
+    
     if (Number(res.Codigo) === 300) {
       return { ok: false, message: "Credenciales del proveedor inválidas (300)." };
     }

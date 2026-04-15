@@ -22,6 +22,7 @@ async function main() {
     create: { name: "Organización principal", slug: "default" },
     update: {},
   });
+  console.log(`[seed] Organization "default" → id para DEMO_ORGANIZATION_ID: ${org.id}`);
 
   const updated = await prisma.company.updateMany({
     where: { organizationId: null },

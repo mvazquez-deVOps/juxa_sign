@@ -54,9 +54,10 @@ export default async function SuperadminPruebaEnvioFirmaPage() {
           <CardDescription className="text-pretty">
             Flujo reducido para <span className="font-medium text-foreground">superadmin</span>: subes un PDF, indicas un
             solo firmante con correo (sin teléfono) y se crea el documento, se coloca una marca por defecto en la página 1
-            y se ejecuta el mismo envío a firma que en el panel. Usa{" "}
-            <span className="font-medium text-foreground">DIGID en mock</span> y correo transaccional (Resend/SMTP) si lo
-            tienes en <code className="rounded bg-muted px-1 text-xs">.env</code>. Alinea{" "}
+            y se ejecuta el mismo envío a firma que en el panel. Requiere{" "}
+            <span className="font-medium text-foreground">credenciales DIGID</span> en{" "}
+            <code className="rounded bg-muted px-1 text-xs">.env</code> y correo transaccional (Resend/SMTP) si lo
+            tienes. Alinea{" "}
             <code className="rounded bg-muted px-1 text-xs">NEXT_PUBLIC_APP_URL</code> o{" "}
             <code className="rounded bg-muted px-1 text-xs">JUXA_LOCAL_SIGNING_BASE_URL</code> con tu{" "}
             <code className="rounded bg-muted px-1 text-xs">npm run dev</code>.

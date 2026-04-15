@@ -178,7 +178,7 @@ export const PROJECT_CRITERIA: ProjectCriterion[] = [
   {
     id: "deliver-digid-real",
     block: "Entrega",
-    label: "DIGID modo T (staging) sin mock: credenciales y flujo checklist completo",
+    label: "DIGID modo T (staging): credenciales y flujo checklist completo",
     weight: 14,
     status: "todo",
     evidence: "docs/checklist-pruebas-firma.md · docs/api-digid.md",

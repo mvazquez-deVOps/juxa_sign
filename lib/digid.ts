@@ -1,8 +1,6 @@
 /**
  * Cliente DIGID — solo servidor. Ver docs/api-digid.md
  */
-import { isDigidMocked } from "@/lib/data/mode";
-import * as digidMock from "@/lib/digid-mock";
 
 const REQUIRED = [
   "DIGID_API_BASE",
@@ -265,7 +263,7 @@ export type SignatureCoordinate = {
   altoPagina: number;
   AnchoPagina: number;
   xDoc: number;
-  yDoc: number;
+  ydoc: number;
   position: number;
 };
 
@@ -280,8 +278,6 @@ export type RegistrarEmpresaInput = {
 export async function registrarEmpresa(
   input: RegistrarEmpresaInput,
 ): Promise<LegacyRegistrarResponse> {
-  if (isDigidMocked()) return digidMock.mockRegistrarEmpresa(input);
-  // Al usar la nueva función, ya nos devuelve el JSON parseado
   const data = await digidPostLegacy("RegistrarEmpresa", input);
   return data as LegacyRegistrarResponse;
 }
@@ -302,7 +298,6 @@ export type CrearFirmanteInput = {
 export async function guardarFirmante(
   input: CrearFirmanteInput,
 ): Promise<BearerSuccessData<SaveSignatoryData>> {
-  if (isDigidMocked()) return digidMock.mockGuardarFirmante(input);
   const res = await digidFetchBearer("signatory/save_signatory", {
     method: "POST",
     body: JSON.stringify(input),
@@ -315,7 +310,6 @@ export async function guardarFirmante(
 export async function crearDocumentoMultipart(form: FormData): Promise<
   BearerSuccessData<CreateDocData>
 > {
-  if (isDigidMocked()) return digidMock.mockCrearDocumentoMultipart(form);
   const res = await digidFetchBearer("create_doc", {
     method: "POST",
     body: form,
@@ -371,7 +365,6 @@ export async function asignarFirmantesDocumento(body: {
   IdDocument: number;
   signatories: { id: number; kyc: boolean }[];
 }): Promise<{ success: boolean; message?: string }> {
-  if (isDigidMocked()) return digidMock.mockAsignarFirmantesDocumento(body);
   const payload = {
     IdClient: body.IdClient,
     IdDocument: body.IdDocument,
@@ -404,7 +397,6 @@ export async function obtenerUrlFirmaDocumento(body: {
   IdCliente: number;
   IdDocumento: number;
 }): Promise<LegacyRegistrarResponse> {
-  if (isDigidMocked()) return digidMock.mockObtenerUrlFirmaDocumento(body);
   const data = await digidPostLegacy("dURLFirmaDoc", body);
   return data as LegacyRegistrarResponse;
 }
@@ -428,7 +420,6 @@ export type EnviarFirmarInput = {
 export async function enviarAFirmar(
   input: EnviarFirmarInput,
 ): Promise<{ Success: boolean; Message?: string }> {
-  if (isDigidMocked()) return digidMock.mockEnviarAFirmar(input);
   const { FolioPremium, ObserverAprove, ...rest } = input;
   const body: Record<string, unknown> = {
     ...rest,
@@ -452,7 +443,6 @@ export async function infoDocumento(body: {
   IdCliente: number;
   IdDocumento: number;
 }): Promise<LegacyRegistrarResponse> {
-  if (isDigidMocked()) return digidMock.mockInfoDocumento(body);
   const data = await digidPostLegacy("dInfoDocto", body);
   return data as LegacyRegistrarResponse;
 }
@@ -472,7 +462,6 @@ export async function urlFirmaFirmante(body: {
   IdDocumento: number;
   IdFirmante: number;
 }): Promise<LegacyRegistrarResponse> {
-  if (isDigidMocked()) return digidMock.mockUrlFirmaFirmante(body);
   const data = await digidPostLegacy("dObtenerURLFirmante", body);
   return data as LegacyRegistrarResponse;
 }
@@ -482,7 +471,6 @@ export async function reenviarDocumento(body: {
   IdDocumento: number;
   IdFirmante: number;
 }): Promise<LegacyRegistrarResponse> {
-  if (isDigidMocked()) return digidMock.mockReenviarDocumento();
   const data = await digidPostLegacy("dReEnviarDocumento", body);
   return data as LegacyRegistrarResponse;
 }
@@ -493,7 +481,6 @@ export async function registrarWebhook(body: {
   IdClient: number;
   Url: string;
 }): Promise<{ success: boolean; message?: string }> {
-  if (isDigidMocked()) return digidMock.mockRegistrarWebhook(body);
   const res = await digidFetchBearer("add_webhook", {
     method: "POST",
     body: JSON.stringify(body),
@@ -528,7 +515,6 @@ export type CertificarDocumentoResult =
  * DIGID puede responder JSON o PDF según ambiente. Se lee el cuerpo una sola vez.
  */
 export async function certificarDocumento(form: FormData): Promise<CertificarDocumentoResult> {
-  if (isDigidMocked()) return digidMock.mockCertificarDocumento(form);
   const res = await digidFetchBearer("certify_doc", {
     method: "POST",
     body: form,

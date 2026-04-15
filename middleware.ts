@@ -3,11 +3,11 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { DEMO_SESSION_COOKIE, verifyDemoSessionValue } from "@/lib/demo-auth-verify";
 
-/** PDFs en /public usados por DIGID mock en enlaces de firma por correo (el firmante no tiene sesión en el panel). */
-const PUBLIC_MOCK_SIGNING_PDFS = new Set(["/demo-sample.pdf", "/mock-doc.pdf", "/firma-prueba"]);
+/** PDFs en /public usados en enlaces de firma de prueba (el firmante no tiene sesión en el panel). */
+const PUBLIC_DEMO_SIGNING_PDFS = new Set(["/demo-sample.pdf", "/mock-doc.pdf", "/firma-prueba"]);
 
-function isPublicMockSigningPdf(pathname: string) {
-  return PUBLIC_MOCK_SIGNING_PDFS.has(pathname);
+function isPublicDemoSigningPdf(pathname: string) {
+  return PUBLIC_DEMO_SIGNING_PDFS.has(pathname);
 }
 
 function isStatic(pathname: string) {
@@ -45,7 +45,7 @@ async function demoPasswordGate(request: NextRequest): Promise<NextResponse> {
     return res;
   }
 
-  if (isStatic(pathname) || isPublicMockSigningPdf(pathname)) {
+  if (isStatic(pathname) || isPublicDemoSigningPdf(pathname)) {
     return NextResponse.next();
   }
 
@@ -115,7 +115,7 @@ const withNextAuth = auth((req) => {
   const isDiagnosticoDigid = path.startsWith("/api/diagnostico-general");
   if (
     isStaticPath ||
-    isPublicMockSigningPdf(path) ||
+    isPublicDemoSigningPdf(path) ||
     isAuthApi ||
     isWebhook ||
     isPublicApiV1 ||
