@@ -1,9 +1,5 @@
 import Link from "next/link";
-import {
-  dbCompaniesFindManyByRazon,
-  dbEnsureDefaultDemoClientIfEmpty,
-  dbSignatoryFindManyByCompany,
-} from "@/lib/data/repository";
+import { dbCompaniesFindManyByRazon, dbSignatoryFindManyByCompany } from "@/lib/data/repository";
 import { Button } from "@/components/ui/button";
 import { canMutate } from "@/lib/gate";
 import { requireOrgContext } from "@/lib/org-scope";
@@ -15,7 +11,6 @@ export default async function FirmantesPage({ searchParams }: Props) {
   const { organizationId, role } = await requireOrgContext();
   const allowWrite = canMutate(role);
   const { companyId } = await searchParams;
-  await dbEnsureDefaultDemoClientIfEmpty(organizationId);
   const companies = await dbCompaniesFindManyByRazon(organizationId, "asc");
   const selectedId = companyId && companies.some((c) => c.id === companyId) ? companyId : companies[0]?.id;
 
@@ -32,7 +27,7 @@ export default async function FirmantesPage({ searchParams }: Props) {
       {companies.length === 0 ? (
         <div className="mx-auto max-w-md space-y-4 rounded-xl border bg-card p-8 text-center">
           <p className="text-sm text-muted-foreground">
-            El orden del panel es: <strong className="text-foreground">Clientes</strong> (alta en DIGID) →{" "}
+            El orden del panel es: <strong className="text-foreground">Clientes</strong> →{" "}
             <strong className="text-foreground">Firmantes</strong> → Documentos. Aquí aún no hay clientes en tu
             organización.
           </p>

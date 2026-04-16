@@ -569,27 +569,6 @@ export function memoryHomeDashboardCountsForOrg(organizationId: string) {
   };
 }
 
-/**
- * Si la organización no tiene clientes (p. ej. alta por /registro en memoria), crea uno de prueba para poder seguir el flujo.
- */
-export function memoryEnsureDemoCompaniesForOrg(organizationId: string) {
-  seed();
-  const hasAny = [...$m().companies.values()].some((c) => c.organizationId === organizationId);
-  if (hasAny) return;
-  const now = new Date();
-  const id = memCuid();
-  $m().companies.set(id, {
-    id,
-    digidIdClient: memoryNextDigidClient(),
-    razonSocial: "Cliente de prueba Juxa",
-    rfc: "JUX910101XXX",
-    email: "prueba@cliente.demo",
-    organizationId,
-    createdAt: now,
-    updatedAt: now,
-  });
-}
-
 export function memoryCompaniesForOrg(
   organizationId: string,
   orderBy: "createdAt" | "razonSocial",
@@ -1447,7 +1426,6 @@ export function memoryRegisterOrganizationWithAdmin(data: {
   if (!g.ok) {
     throw new Error(g.message);
   }
-  memoryEnsureDemoCompaniesForOrg(orgId);
   return { organizationId: orgId, userId: user.id };
 }
 

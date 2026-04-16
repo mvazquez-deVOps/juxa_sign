@@ -30,7 +30,6 @@ import {
   memoryDocumentUpdateManyByDigidId,
   memoryDocumentsForBatchPicker,
   memoryDocumentsWithCompanyForOrg,
-  memoryEnsureDemoCompaniesForOrg,
   memoryFindDocumentDetailInOrg,
   memoryFindDocumentInOrg,
   memoryFolioGrant,
@@ -144,6 +143,7 @@ export async function dbUserFindUniqueWithOrg(email: string) {
       passwordHash: row.passwordHash,
       role: row.role,
       organizationId: row.organizationId,
+      isRevoked: false,
     };
   }
   const p = prisma;
@@ -155,8 +155,19 @@ export async function dbUserFindUniqueWithOrg(email: string) {
       passwordHash: true,
       role: true,
       organizationId: true,
+      isRevoked: true,
     },
   });
+}
+
+/** Lectura ligera para JWT/sesión (modo memoria: sin revocación persistente). */
+export async function dbUserIsRevoked(userId: string): Promise<boolean> {
+  if (isMemoryDataStore()) {
+    return false;
+  }
+  const p = prisma;
+  const row = await p.user.findUnique({ where: { id: userId }, select: { isRevoked: true } });
+  return row?.isRevoked ?? false;
 }
 
 export async function dbUserFindByEmailGlobal(email: string) {
@@ -475,27 +486,6 @@ export async function dbOrgInviteFindByTokenHash(tokenHash: string) {
 }
 
 // --- Companies ---
-
-export async function dbEnsureDefaultDemoClientIfEmpty(organizationId: string) {
-  if (isMemoryDataStore()) {
-    memoryEnsureDemoCompaniesForOrg(organizationId);
-    return;
-  }
-  const p = prisma;
-  const n = await p.company.count({ where: { organizationId } });
-  if (n > 0) return;
-  const agg = await p.company.aggregate({ _max: { digidIdClient: true } });
-  const nextDigid = Math.max(91000, (agg._max.digidIdClient ?? 0) + 1);
-  await p.company.create({
-    data: {
-      digidIdClient: nextDigid,
-      razonSocial: "Cliente de prueba Juxa",
-      rfc: "JUX910101XXX",
-      email: "prueba@cliente.demo",
-      organizationId,
-    },
-  });
-}
 
 export async function dbCompaniesFindManyByRazon(organizationId: string, dir: "asc" | "desc" = "asc") {
   if (isMemoryDataStore()) return memoryCompaniesForOrg(organizationId, "razonSocial", dir);

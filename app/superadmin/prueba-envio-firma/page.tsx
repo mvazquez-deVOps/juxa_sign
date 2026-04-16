@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { dbCompaniesFindManyByRazon, dbEnsureDefaultDemoClientIfEmpty } from "@/lib/data/repository";
+import { dbCompaniesFindManyByRazon } from "@/lib/data/repository";
 import { isSuperadminSigningLabEnabled } from "@/lib/superadmin-signing-lab";
 import { resolveSession } from "@/lib/session";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +23,6 @@ export default async function SuperadminPruebaEnvioFirmaPage() {
     );
   }
 
-  await dbEnsureDefaultDemoClientIfEmpty(orgId);
   const companies = await dbCompaniesFindManyByRazon(orgId, "asc");
   const rows = companies.map((c) => ({ id: c.id, razonSocial: c.razonSocial }));
 
@@ -67,7 +66,7 @@ export default async function SuperadminPruebaEnvioFirmaPage() {
           <SuperadminPruebaEnvioFirmaClient companies={rows} />
           <p className="text-sm text-muted-foreground">
             Operación sobre <span className="font-medium text-foreground">tu organización en sesión</span> (la misma que al
-            volver al panel). Si no hay clientes, se intentó crear el de demostración; si sigue vacío, da de alta uno en{" "}
+            volver al panel). Si no hay clientes, da de alta uno en{" "}
             <Link href="/empresas/nueva" className="text-primary underline-offset-4 hover:underline">
               Nuevo cliente
             </Link>

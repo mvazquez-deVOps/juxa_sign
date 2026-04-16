@@ -2,18 +2,23 @@ import Link from "next/link";
 import { dbOrgInvitesList, dbOrgSettingsGet, dbOrgUsersList } from "@/lib/data/repository";
 import { requireOrgContext } from "@/lib/org-scope";
 import { isOrganizationAdmin } from "@/lib/roles";
+import { resolveSession } from "@/lib/session";
 import { TeamEquipoClient } from "./equipo/equipo-client";
+import { DeleteAccountZone } from "./delete-account-zone";
 import { KeyRound } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function ConfiguracionPage() {
   const { organizationId, role } = await requireOrgContext();
-  const [users, invites, settings] = await Promise.all([
+  const [session, users, invites, settings] = await Promise.all([
+    resolveSession(),
     dbOrgUsersList(organizationId),
     dbOrgInvitesList(organizationId),
     dbOrgSettingsGet(organizationId),
   ]);
+  const currentUserId = session?.user?.id ?? null;
+  const activeMembers = users.filter((u) => !Boolean((u as { isRevoked?: boolean }).isRevoked));
 
   return (
     <div className="mx-auto max-w-3xl space-y-10">
@@ -21,7 +26,7 @@ export default async function ConfiguracionPage() {
       {/* Encabezado Principal */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Configuración del Equipo</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Configuración</h1>
           <p className="text-muted-foreground">Administra los accesos y usuarios de tu organización.</p>
           {isOrganizationAdmin(role) ? (
             <p className="mt-2 text-sm">
@@ -35,7 +40,13 @@ export default async function ConfiguracionPage() {
 
       {/* Componente Interactivo de Usuarios (Tabla) */}
       <TeamEquipoClient
-        users={users.map((u) => ({ id: u.id, email: u.email, role: u.role, folioBalance: u.folioBalance }))}
+        currentUserId={currentUserId}
+        users={activeMembers.map((u) => ({
+          id: u.id,
+          email: u.email,
+          role: u.role,
+          folioBalance: u.folioBalance,
+        }))}
         invites={invites.map((i) => ({
           id: i.id,
           email: i.email,
@@ -71,6 +82,7 @@ export default async function ConfiguracionPage() {
         </div>
       </div>
 
+      <DeleteAccountZone />
     </div>
   );
 }

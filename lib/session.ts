@@ -46,6 +46,7 @@ async function resolveDemoSession(): Promise<Session | null> {
       name: "Demo",
       role,
       organizationId: orgId,
+      isRevoked: false,
     },
     expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
   } as Session;

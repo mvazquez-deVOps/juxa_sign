@@ -29,6 +29,13 @@ export async function gateMutation(): Promise<MutationGate> {
           : "Debes iniciar sesión.",
     };
   }
+  if (session.user.isRevoked) {
+    return {
+      ok: false,
+      message:
+        "Tu acceso al panel fue revocado por un administrador. Usa la página de acceso revocado o cierra sesión.",
+    };
+  }
   if (session.user.role === "VIEWER") {
     return {
       ok: false,

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
-import { dbCompaniesFindManyForList, dbEnsureDefaultDemoClientIfEmpty } from "@/lib/data/repository";
+import { dbCompaniesFindManyForList } from "@/lib/data/repository";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmpresasDataTable } from "@/components/tables/empresas-data-table";
@@ -10,7 +10,6 @@ import { requireOrgContext } from "@/lib/org-scope";
 export default async function EmpresasPage() {
   const { organizationId, role } = await requireOrgContext();
   const allowWrite = canMutate(role);
-  await dbEnsureDefaultDemoClientIfEmpty(organizationId);
   const companies = await dbCompaniesFindManyForList(organizationId, "desc");
 
   return (

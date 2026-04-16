@@ -1,8 +1,11 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { UserX } from "lucide-react";
 import {
   createOrganizationInvite,
+  revokeMemberAccess,
   revokeOrganizationInvite,
   updateOrganizationMaxUsers,
   type OrgLimitsState,
@@ -14,6 +17,14 @@ import type { UserRole } from "@prisma/client";
 import { panelRoleLabel } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -29,21 +40,40 @@ const inviteInitial: TeamInviteState | null = null;
 const revokeInitial: TeamRevokeState | null = null;
 const limitsInitial: OrgLimitsState | null = null;
 
+export type TeamMemberRow = {
+  id: string;
+  email: string;
+  role: string;
+  folioBalance: number;
+};
+
 export function TeamEquipoClient({
   users,
   invites,
   maxUsers,
   isAdmin,
+  currentUserId,
 }: {
-  users: { id: string; email: string; role: string; folioBalance: number }[];
+  users: TeamMemberRow[];
   invites: { id: string; email: string; role: string; expiresAt: string }[];
   maxUsers: number | null;
   isAdmin: boolean;
+  currentUserId: string | null;
 }) {
+  const router = useRouter();
+  const [members, setMembers] = useState<TeamMemberRow[]>(users);
+  const [revokeTarget, setRevokeTarget] = useState<{ id: string; email: string } | null>(null);
+  const [isRevoking, setIsRevoking] = useState(false);
+  const [revokeError, setRevokeError] = useState<string | null>(null);
+
   const [role, setRole] = useState<string>("OPERATOR");
   const [inviteState, inviteAction, invitePending] = useActionState(createOrganizationInvite, inviteInitial);
   const [revokeState, revokeAction, revokePending] = useActionState(revokeOrganizationInvite, revokeInitial);
   const [limitsState, limitsAction, limitsPending] = useActionState(updateOrganizationMaxUsers, limitsInitial);
+
+  useEffect(() => {
+    setMembers(users);
+  }, [users]);
 
   useEffect(() => {
     if (inviteState?.message) {
@@ -65,6 +95,33 @@ export function TeamEquipoClient({
       else toast.error(limitsState.message);
     }
   }, [limitsState]);
+
+  async function handleConfirmRevokeMember() {
+    if (!revokeTarget) return;
+    setRevokeError(null);
+    setIsRevoking(true);
+    const result = await revokeMemberAccess(revokeTarget.id);
+    setIsRevoking(false);
+
+    if (!result.ok) {
+      const msg = result.message;
+      setRevokeError(msg);
+      toast.error(msg);
+      return;
+    }
+
+    toast.success(result.message ?? "Acceso revocado.");
+    setMembers((prev) => prev.filter((m) => m.id !== revokeTarget.id));
+    setRevokeTarget(null);
+    router.refresh();
+  }
+
+  function handleRevokeDialogOpenChange(open: boolean) {
+    if (!open) {
+      setRevokeTarget(null);
+      setRevokeError(null);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -106,29 +163,95 @@ export function TeamEquipoClient({
           <CardDescription>Usuarios con acceso al panel de esta organización.</CardDescription>
         </CardHeader>
         <CardContent>
-          {users.length === 0 ? (
+          {members.length === 0 ? (
             <p className="text-sm text-muted-foreground">No hay usuarios listados.</p>
           ) : (
             <ul className="divide-y rounded-md border text-sm">
-              {users.map((u) => (
-                <li key={u.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
-                  <span className="font-medium">{u.email}</span>
-                  <span className="tabular-nums text-muted-foreground">
-                    {panelRoleLabel(u.role as UserRole)} · {u.folioBalance} folios
-                  </span>
-                </li>
-              ))}
+              {members.map((u) => {
+                const showRevoke = isAdmin && currentUserId != null && u.id !== currentUserId;
+
+                return (
+                  <li
+                    key={u.id}
+                    className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5 sm:flex-nowrap"
+                  >
+                    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                      <span className="truncate font-medium">{u.email}</span>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="tabular-nums text-muted-foreground">
+                        {panelRoleLabel(u.role as UserRole)} · {u.folioBalance} folios
+                      </span>
+                      {showRevoke ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          onClick={() => {
+                            setRevokeError(null);
+                            setRevokeTarget({ id: u.id, email: u.email });
+                          }}
+                        >
+                          <UserX className="size-4" aria-hidden />
+                          Revocar acceso
+                        </Button>
+                      ) : null}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </CardContent>
       </Card>
 
+      <Dialog open={revokeTarget != null} onOpenChange={handleRevokeDialogOpenChange}>
+        <DialogContent
+          className="sm:max-w-md"
+          onPointerDownOutside={(e) => {
+            if (isRevoking) e.preventDefault();
+          }}
+          onEscapeKeyDown={(e) => {
+            if (isRevoking) e.preventDefault();
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>Revocar acceso al panel</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de que quieres revocar el acceso de{" "}
+              <span className="font-semibold text-foreground">{revokeTarget?.email}</span> a la organización? Esta
+              persona dejará de poder usar el panel con su cuenta actual.
+            </DialogDescription>
+          </DialogHeader>
+          {revokeError ? (
+            <p className="text-sm text-destructive" role="alert">
+              {revokeError}
+            </p>
+          ) : null}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleRevokeDialogOpenChange(false)}
+              disabled={isRevoking}
+            >
+              Cancelar
+            </Button>
+            <Button type="button" variant="destructive" disabled={isRevoking} onClick={handleConfirmRevokeMember}>
+              {isRevoking ? "Cargando…" : "Confirmar revocación"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Card>
         <CardHeader>
           <CardTitle>Invitaciones pendientes</CardTitle>
-            <CardDescription>
-            Los enlaces expiran en 7 días. Se enviará a tus invitados un correo con el enlace y las instrucciones para unirse al equipo.
-            </CardDescription>
+          <CardDescription>
+            Los enlaces expiran en 7 días. Se enviará a tus invitados un correo con el enlace y las instrucciones para
+            unirse al equipo.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {invites.length === 0 ? (
@@ -217,7 +340,7 @@ export function TeamEquipoClient({
               ) : null}
             </>
           ) : (
-            <p className="text-sm text-muted-foreground border-t pt-4">
+            <p className="border-t pt-4 text-sm text-muted-foreground">
               Solo un administrador puede invitar a nuevos miembros.
             </p>
           )}

@@ -38,6 +38,8 @@ export function AppLayoutClient({
   const bare =
     pathname === "/login" ||
     pathname.startsWith("/login/") ||
+    pathname === "/acceso-revocado" ||
+    pathname.startsWith("/acceso-revocado/") ||
     pathname.startsWith("/invitacion/") ||
     pathname === "/registro" ||
     pathname.startsWith("/registro/");
