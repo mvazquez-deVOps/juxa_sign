@@ -286,7 +286,8 @@ export async function sendDocumentForSigning(
   const parsed = sendSchema.safeParse({
     documentId: formData.get("documentId"),
     typeSign: typeRaw === 2 ? 2 : 1,
-    folioPremium: formData.get("folioPremium") === "on",
+    /** Siempre premium / NOM-151 en envío manual (UI ya no expone la opción). */
+    folioPremium: true,
     colorSign: formData.get("colorSign")?.toString() || undefined,
     remider,
     observerEmail: formData.get("observerEmail")?.toString(),
