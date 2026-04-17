@@ -8,9 +8,11 @@ import {
   dbDocumentFindFirstInOrgWithCompany,
   dbDocumentFindFirstWithPlacementsAndSignatories,
   dbDocumentFindFirstInOrgSelectId,
+  dbDocumentSignatoryReplace,
   dbDocumentTouchLastStatusSync,
   dbDocumentUpdateStatus,
   dbDocumentsFindManyForSync,
+  dbFindDocumentDetailInOrg,
   dbPlacementCreate,
   dbPlacementDeleteById,
   dbPlacementDeleteManyForDocument,
@@ -179,7 +181,7 @@ const placementSchema = z.object({
   heightPx: z.coerce.number(),
 });
 
-export async function addPlacement(formData: FormData) {
+export async function addPlacement(formData: FormData): Promise<{ ok: boolean; message?: string }> {
   const g = await gateMutation();
   if (!g.ok) return { ok: false, message: g.message };
   const orgId = g.session.user.organizationId;
@@ -211,14 +213,40 @@ export async function addPlacement(formData: FormData) {
   return { ok: true };
 }
 
-export async function clearPlacements(documentId: string) {
+export async function clearPlacements(documentId: string): Promise<{ ok: boolean; message?: string }> {
   const g = await gateMutation();
-  if (!g.ok) return;
+  if (!g.ok) return { ok: false, message: g.message };
   const orgId = g.session.user.organizationId;
   const doc = await dbDocumentFindFirstInOrgSelectId(documentId, orgId);
-  if (!doc) return;
+  if (!doc) return { ok: false, message: "Documento no encontrado." };
   await dbPlacementDeleteManyForDocument(documentId);
   revalidatePath(`/documentos/${documentId}`);
+  return { ok: true };
+}
+
+/** Reemplaza `DocumentSignatory` por los firmantes que tienen al menos una marca en el PDF. */
+export async function syncDocumentSignatoriesFromPlacements(
+  documentId: string,
+): Promise<{ ok: boolean; message?: string }> {
+  const g = await gateMutation();
+  if (!g.ok) return { ok: false, message: g.message };
+  const orgId = g.session.user.organizationId;
+  const doc = await dbFindDocumentDetailInOrg(documentId, orgId);
+  if (!doc) return { ok: false, message: "Documento no encontrado." };
+  const ids = [...new Set(doc.placements.map((p) => p.signatoryId))];
+  await dbDocumentSignatoryReplace(
+    documentId,
+    ids.map((signatoryId) => ({ signatoryId, kyc: false })),
+  );
+  revalidatePath(`/documentos/${documentId}`);
+  revalidatePath(`/documentos/${documentId}/enviar`);
+  return {
+    ok: true,
+    message:
+      ids.length > 0
+        ? `Listo: ${ids.length} firmante(s) vinculado(s) al documento según las marcas del PDF.`
+        : "Sin marcas en el PDF: se vació la lista de firmantes asignados al documento.",
+  };
 }
 
 const removePlacementSchema = z.object({

@@ -9,6 +9,7 @@ export type PdfPickPayload = {
 
 export type PdfPlacementVisual = {
   id: string;
+  signatoryId: string;
   page: number;
   x: number;
   y: number;

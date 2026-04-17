@@ -57,6 +57,7 @@ export default async function DocumentDetailPage({ params }: Props) {
         signatories={signatories.map((s) => ({ id: s.id, name: s.name, digidId: s.digidSignatoryId }))}
         placements={doc.placements.map((p) => ({
           id: p.id,
+          signatoryId: p.signatoryId,
           page: p.page,
           x: p.x,
           y: p.y,
