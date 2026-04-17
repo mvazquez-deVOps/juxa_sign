@@ -12,7 +12,9 @@ import {
   dbDocumentUpdateStatus,
   dbDocumentsFindManyForSync,
   dbPlacementCreate,
+  dbPlacementDeleteById,
   dbPlacementDeleteManyForDocument,
+  dbPlacementUpdateGeometry,
   dbPlacementsReorder,
 } from "@/lib/data/repository";
 import {
@@ -217,6 +219,69 @@ export async function clearPlacements(documentId: string) {
   if (!doc) return;
   await dbPlacementDeleteManyForDocument(documentId);
   revalidatePath(`/documentos/${documentId}`);
+}
+
+const removePlacementSchema = z.object({
+  documentId: z.string().cuid(),
+  placementId: z.string().cuid(),
+});
+
+export async function removePlacement(formData: FormData): Promise<{ ok: boolean; message?: string }> {
+  const g = await gateMutation();
+  if (!g.ok) return { ok: false, message: g.message };
+  const orgId = g.session.user.organizationId;
+  const parsed = removePlacementSchema.safeParse({
+    documentId: formData.get("documentId"),
+    placementId: formData.get("placementId"),
+  });
+  if (!parsed.success) return { ok: false, message: "Datos de marca inválidos." };
+  const ok = await dbPlacementDeleteById(parsed.data.placementId, orgId);
+  if (!ok) return { ok: false, message: "Marca no encontrada o sin permiso." };
+  revalidatePath(`/documentos/${parsed.data.documentId}`);
+  return { ok: true };
+}
+
+const updatePlacementGeometrySchema = z.object({
+  documentId: z.string().cuid(),
+  placementId: z.string().cuid(),
+  page: z.coerce.number().int().min(1),
+  x: z.coerce.number(),
+  y: z.coerce.number(),
+  widthPx: z.coerce.number(),
+  heightPx: z.coerce.number(),
+});
+
+export async function updatePlacementGeometry(
+  formData: FormData,
+): Promise<{ ok: boolean; message?: string }> {
+  const g = await gateMutation();
+  if (!g.ok) return { ok: false, message: g.message };
+  const orgId = g.session.user.organizationId;
+  const parsed = updatePlacementGeometrySchema.safeParse({
+    documentId: formData.get("documentId"),
+    placementId: formData.get("placementId"),
+    page: formData.get("page"),
+    x: formData.get("x"),
+    y: formData.get("y"),
+    widthPx: formData.get("widthPx"),
+    heightPx: formData.get("heightPx"),
+  });
+  if (!parsed.success) return { ok: false, message: "Datos de marca inválidos." };
+  const ok = await dbPlacementUpdateGeometry(
+    parsed.data.placementId,
+    parsed.data.documentId,
+    orgId,
+    {
+      page: parsed.data.page,
+      x: parsed.data.x,
+      y: parsed.data.y,
+      widthPx: parsed.data.widthPx,
+      heightPx: parsed.data.heightPx,
+    },
+  );
+  if (!ok) return { ok: false, message: "No se pudo actualizar la marca." };
+  revalidatePath(`/documentos/${parsed.data.documentId}`);
+  return { ok: true };
 }
 
 /** Sin sesión: usar solo desde rutas que ya validaron `organizationId`. */

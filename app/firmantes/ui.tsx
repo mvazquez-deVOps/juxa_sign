@@ -80,7 +80,7 @@ export function FirmantesClient({
       <div className="space-y-6">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Firmantes de la organización</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">Firmantes</h1>
             <p className="text-sm text-muted-foreground">
               Aquí cargas a las <span className="font-medium text-foreground">personas que firman</span> para el
               cliente seleccionado; sin firmantes no podrás completar el envío a firma.
@@ -166,19 +166,9 @@ export function FirmantesClient({
           <CardContent>
             {signatories.length === 0 ? (
               <div className="flex flex-col items-center py-12 text-center">
-                <div className="mb-4 rounded-full bg-muted p-4">
-                  <Users className="h-10 w-10 text-muted-foreground" aria-hidden />
-                </div>
-                <p className="text-lg font-semibold tracking-tight">No hay firmantes</p>
                 <p className="mt-2 max-w-md text-sm text-muted-foreground">
                   Para iniciar la firma necesitas al menos una persona con nombre y correo o teléfono en esta lista.
                 </p>
-                {allowWrite ? (
-                  <Button type="button" className="mt-6" onClick={() => setOpen(true)}>
-                    <Plus className="h-4 w-4" />
-                    Añadir firmante
-                  </Button>
-                ) : null}
               </div>
             ) : (
               <div className="rounded-md border">

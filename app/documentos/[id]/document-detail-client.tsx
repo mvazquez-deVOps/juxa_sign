@@ -3,8 +3,8 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
-import { addPlacement, clearPlacements } from "@/app/actions/document";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { addPlacement, clearPlacements, removePlacement, updatePlacementGeometry } from "@/app/actions/document";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import type { PdfPickPayload } from "@/types/pdf-sign";
+import type { PdfPickPayload, PdfPlacementVisual } from "@/types/pdf-sign";
 
 const PdfSignViewer = dynamic(() => import("@/components/pdf-sign-viewer"), {
   ssr: false,
@@ -39,18 +39,9 @@ export function DocumentDetailClient({
   companyRazonSocial: string;
   fileUrl: string | null;
   signatories: { id: string; name: string; digidId: number }[];
-  placements: {
-    id: string;
-    page: number;
-    x: number;
-    y: number;
-    widthPx: number;
-    heightPx: number;
-    signatoryName: string;
-  }[];
+  placements: PdfPlacementVisual[];
 }) {
   const router = useRouter();
-  const [markMode, setMarkMode] = useState(false);
   const [signatoryId, setSignatoryId] = useState(signatories[0]?.id ?? "");
   const [pending, startTransition] = useTransition();
 
@@ -61,6 +52,11 @@ export function DocumentDetailClient({
       return signatories[0]!.id;
     });
   }, [signatories]);
+
+  const activeSignatoryLabel = useMemo(() => {
+    const s = signatories.find((x) => x.id === signatoryId);
+    return s?.name ?? "";
+  }, [signatories, signatoryId]);
 
   const onPick = (p: PdfPickPayload) => {
     if (!allowWrite) {
@@ -90,32 +86,63 @@ export function DocumentDetailClient({
     });
   };
 
+  const onRemovePlacement = (placementId: string) => {
+    if (!allowWrite) return;
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set("documentId", documentId);
+      fd.set("placementId", placementId);
+      const res = await removePlacement(fd);
+      if (res.ok) {
+        toast.success("Marca eliminada");
+        router.refresh();
+      } else toast.error(res.message ?? "No se pudo eliminar");
+    });
+  };
+
+  const onMovePlacement = (placementId: string, p: PdfPickPayload) => {
+    if (!allowWrite) return;
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set("documentId", documentId);
+      fd.set("placementId", placementId);
+      fd.set("page", String(p.page));
+      fd.set("x", String(p.x));
+      fd.set("y", String(p.y));
+      fd.set("widthPx", String(p.widthPx));
+      fd.set("heightPx", String(p.heightPx));
+      const res = await updatePlacementGeometry(fd);
+      if (res.ok) {
+        toast.success("Posición actualizada");
+        router.refresh();
+      } else toast.error(res.message ?? "No se pudo mover la marca");
+    });
+  };
+
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
       <Card>
-        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <CardHeader>
           <div>
             <CardTitle>Visor PDF</CardTitle>
             <CardDescription>
-              Activa “Marcar firma”, elige “Firmante activo” y haz clic donde va la firma sobre el PDF.
+              Elige el firmante activo en el panel derecho y coloca las marcas directamente sobre el PDF.
             </CardDescription>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant={markMode ? "default" : "outline"}
-              size="sm"
-              disabled={!allowWrite}
-              onClick={() => allowWrite && setMarkMode((m) => !m)}
-            >
-              {markMode ? "Marcar firma: ON" : "Modo marcar: OFF"}
-            </Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
           {!fileUrl ? (
             <p className="text-muted-foreground">Este documento no tiene URL de archivo en el proveedor.</p>
           ) : (
-            <PdfSignViewer fileUrl={fileUrl} markMode={markMode} onPick={onPick} />
+            <PdfSignViewer
+              fileUrl={fileUrl}
+              readOnly={!allowWrite}
+              placements={placements}
+              activeSignatoryLabel={activeSignatoryLabel}
+              onPick={onPick}
+              onRemovePlacement={onRemovePlacement}
+              onMovePlacement={onMovePlacement}
+            />
           )}
         </CardContent>
       </Card>
@@ -139,10 +166,7 @@ export function DocumentDetailClient({
                 </Button>
               </div>
             ) : (
-              <Select
-                value={signatoryId || undefined}
-                onValueChange={setSignatoryId}
-              >
+              <Select value={signatoryId || undefined} onValueChange={setSignatoryId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Elige firmante" />
                 </SelectTrigger>
@@ -194,7 +218,6 @@ export function DocumentDetailClient({
             )}
           </CardContent>
         </Card>
-
       </div>
     </div>
   );

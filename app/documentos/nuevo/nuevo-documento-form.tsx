@@ -249,11 +249,6 @@ export function NuevoDocumentoForm({
           )}
         </TabsContent>
       </Tabs>
-
-      <p className="text-center text-xs text-muted-foreground">
-        Después del documento: <Link href="/firmantes">Firmantes</Link> → marcas en el visor →{" "}
-        <Link href="/documentos">Enviar a firmar</Link>.
-      </p>
     </div>
   );
 }

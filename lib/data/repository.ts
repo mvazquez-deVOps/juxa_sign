@@ -56,7 +56,9 @@ import {
   memoryOrganizationFindById,
   memoryOrganizationFindBySlug,
   memoryPlacementCreate,
+  memoryPlacementDeleteById,
   memoryPlacementDeleteManyForDocument,
+  memoryPlacementUpdateGeometry,
   memoryPlacementsReorder,
   memoryRegisterOrganizationWithAdmin,
   memorySigningJobCreate,
@@ -604,7 +606,10 @@ export async function dbDocumentsFindManyWithCompany(
   return p.document.findMany({
     where: orgCompanyIdsFilter(organizationId),
     orderBy: { [orderField]: dir },
-    include: { company: true },
+    include: {
+      signatories: { select: { id: true } },
+      company: { include: { _count: { select: { signatories: true } } } },
+    },
   });
 }
 
@@ -859,6 +864,50 @@ export async function dbPlacementDeleteManyForDocument(documentId: string) {
   }
   const p = prisma;
   await p.signaturePlacement.deleteMany({ where: { documentId } });
+}
+
+export async function dbPlacementDeleteById(placementId: string, organizationId: string): Promise<boolean> {
+  if (isMemoryDataStore()) return memoryPlacementDeleteById(placementId, organizationId);
+  const p = prisma;
+  const row = await p.signaturePlacement.findFirst({
+    where: { id: placementId, document: orgCompanyIdsFilter(organizationId) },
+    select: { id: true },
+  });
+  if (!row) return false;
+  await p.signaturePlacement.delete({ where: { id: placementId } });
+  return true;
+}
+
+export async function dbPlacementUpdateGeometry(
+  placementId: string,
+  documentId: string,
+  organizationId: string,
+  data: { page: number; x: number; y: number; widthPx: number; heightPx: number },
+): Promise<boolean> {
+  if (isMemoryDataStore()) {
+    return memoryPlacementUpdateGeometry(placementId, documentId, organizationId, data);
+  }
+  const p = prisma;
+  const row = await p.signaturePlacement.findFirst({
+    where: {
+      id: placementId,
+      documentId,
+      document: orgCompanyIdsFilter(organizationId),
+    },
+    select: { id: true },
+  });
+  if (!row) return false;
+  await p.signaturePlacement.update({
+    where: { id: placementId },
+    data: {
+      page: data.page,
+      x: data.x,
+      y: data.y,
+      widthPx: data.widthPx,
+      heightPx: data.heightPx,
+    },
+  });
+  return true;
 }
 
 export async function dbPlacementsReorder(

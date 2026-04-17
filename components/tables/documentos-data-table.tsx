@@ -11,7 +11,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import * as React from "react";
-import { RefreshCw } from "lucide-react";
+import { Eye, RefreshCw, Send, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { refreshDocumentStatus } from "@/app/actions/document";
 import { Button } from "@/components/ui/button";
@@ -23,10 +23,22 @@ import { cn } from "@/lib/utils";
 export type DocumentoRow = {
   id: string;
   nameDoc: string;
+  companyId: string;
   companyName: string;
+  /** Firmantes dados de alta para el cliente (empresa); no implica vínculo DocumentSignatory. */
+  companySignatoryCount: number;
   digidDocumentId: number;
   status: string | null;
+  /** Vínculos documento ↔ firmante (tras asignar en flujo de envío). */
+  signatories: { id: string }[];
 };
+
+function isLikelyUnsentDraft(status: string | null | undefined): boolean {
+  if (status == null) return true;
+  const t = status.trim();
+  if (t === "") return true;
+  return /borrador|draft/i.test(t);
+}
 
 function SyncEstadoButton({ documentId }: { documentId: string }) {
   const router = useRouter();
@@ -38,7 +50,7 @@ function SyncEstadoButton({ documentId }: { documentId: string }) {
       variant="ghost"
       size="icon"
       className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
-      title="Sincronizar estado con DIGID"
+      title="Sincronizar estado"
       disabled={pending}
       onClick={() => {
         setPending(true);
@@ -54,6 +66,64 @@ function SyncEstadoButton({ documentId }: { documentId: string }) {
       <RefreshCw className={cn("h-4 w-4", pending && "animate-spin")} aria-hidden />
       <span className="sr-only">Sincronizar estado</span>
     </Button>
+  );
+}
+
+function DocumentoActionsCell({
+  doc,
+  showEnviarLink,
+}: {
+  doc: DocumentoRow;
+  showEnviarLink: boolean;
+}) {
+  const hasCompanyCatalogSignatories = doc.companySignatoryCount > 0;
+  const hasDocSignatories = doc.signatories.length > 0;
+
+  if (!showEnviarLink) {
+    return (
+      <div className="flex flex-wrap items-center justify-end gap-1">
+        <Button variant="ghost" size="sm" className="h-8 gap-2 px-2 font-normal text-sm" asChild>
+          <Link href={`/documentos/${doc.id}`}>
+            <Eye className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+            Visor
+          </Link>
+        </Button>
+      </div>
+    );
+  }
+
+  if (!hasCompanyCatalogSignatories) {
+    return (
+      <div className="flex flex-wrap items-center justify-end gap-1">
+        <Button variant="ghost" size="sm" className="h-8 gap-2 px-2 font-normal text-sm" asChild>
+          <Link href={`/firmantes?companyId=${encodeURIComponent(doc.companyId)}`}>
+            <UserPlus className="h-4 w-4 shrink-0" aria-hidden />
+            Asignar firmantes
+          </Link>
+        </Button>
+      </div>
+    );
+  }
+
+  const showEnviar = hasDocSignatories && isLikelyUnsentDraft(doc.status);
+
+  return (
+    <div className="flex flex-wrap items-center justify-start gap-1">
+      <Button variant="ghost" size="sm" className="h-8 gap-2 px-2 font-normal text-sm" asChild>
+        <Link href={`/documentos/${doc.id}`}>
+          <Eye className="h-4 w-4 shrink-0" aria-hidden />
+          Visor
+        </Link>
+      </Button>
+      {showEnviar ? (
+        <Button variant="ghost" size="sm" className="h-8 gap-2 px-2 font-normal text-sm" asChild>
+          <Link href={`/documentos/${doc.id}/enviar`}>
+            <Send className="h-4 w-4 shrink-0" aria-hidden />
+            Enviar
+          </Link>
+        </Button>
+      ) : null}
+    </div>
   );
 }
 
@@ -81,7 +151,7 @@ export function DocumentosDataTable({
       {
         id: "companyName",
         accessorKey: "companyName",
-        header: "Empresa",
+        header: "Empresa o Cliente",
       },
       {
         id: "digidDocumentId",
@@ -102,18 +172,12 @@ export function DocumentosDataTable({
       },
       {
         id: "actions",
-        header: () => <span className="text-right">Acciones</span>,
+        accessorKey: "actions",
+        header: "Acciones",
         enableSorting: false,
         cell: ({ row }) => (
-          <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
-            <Button variant="link" className="h-auto p-0" asChild>
-              <Link href={`/documentos/${row.original.id}`}>Visor / firmas</Link>
-            </Button>
-            {showEnviarLink ? (
-              <Button variant="link" className="h-auto p-0" asChild>
-                <Link href={`/documentos/${row.original.id}/enviar`}>Enviar</Link>
-              </Button>
-            ) : null}
+          <div className="flex justify-start"> {/* Cambiado a justify-start */}
+            <DocumentoActionsCell doc={row.original} showEnviarLink={showEnviarLink} />
           </div>
         ),
       },
@@ -137,7 +201,7 @@ export function DocumentosDataTable({
           {table.getHeaderGroups().map((hg) => (
             <TableRow key={hg.id}>
               {hg.headers.map((h) => (
-                <SortableTableHead key={h.id} header={h} alignRight={h.column.id === "actions"} />
+                <SortableTableHead key={h.id} header={h} alignRight={false} />
               ))}
             </TableRow>
           ))}
