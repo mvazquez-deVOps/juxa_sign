@@ -50,9 +50,12 @@ export default async function DocumentosPage() {
               data={docs.map((d) => ({
                 id: d.id,
                 nameDoc: d.nameDoc,
+                companyId: d.companyId,
                 companyName: d.company.razonSocial,
+                companySignatoryCount: d.company._count.signatories,
                 digidDocumentId: d.digidDocumentId,
                 status: d.status,
+                signatories: d.signatories,
               }))}
             />
           )}

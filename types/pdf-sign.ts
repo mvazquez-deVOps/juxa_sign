@@ -6,3 +6,14 @@ export type PdfPickPayload = {
   widthPx: number;
   heightPx: number;
 };
+
+export type PdfPlacementVisual = {
+  id: string;
+  signatoryId: string;
+  page: number;
+  x: number;
+  y: number;
+  widthPx: number;
+  heightPx: number;
+  signatoryName: string;
+};

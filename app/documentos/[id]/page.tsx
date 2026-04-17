@@ -48,54 +48,6 @@ export default async function DocumentDetailPage({ params }: Props) {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Constancias</CardTitle>
-          <CardDescription>
-            PDF guardado en el servidor cuando el proveedor devuelve archivo.
-            {allowWrite ? (
-              <>
-                {" "}
-                También puedes generar una desde{" "}
-                <Link href={`/documentos/${doc.id}/enviar`} className="text-primary underline">
-                  Enviar a firmar
-                </Link>
-                .
-              </>
-            ) : (
-              <>
-                {" "}
-                En perfil visor · potencial consumidor no se gestionan envíos aquí; revisa estados en Envíos y planes en
-                Folios.
-              </>
-            )}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2 text-sm">
-          {doc.certificates.length === 0 ? (
-            <p className="rounded-md border border-dashed bg-muted/30 px-4 py-6 text-center text-muted-foreground">
-              Aún no hay constancias para este documento. Tras firmar, usa el botón de constancia en la
-              pantalla de envío; si el proveedor devuelve PDF, aparecerá aquí con enlace de descarga seguro.
-            </p>
-          ) : (
-            doc.certificates.map((c) => (
-              <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3">
-                <span className="text-muted-foreground">
-                  {c.fileName ?? c.id} · {c.createdAt.toLocaleString()}
-                </span>
-                {c.filePath ? (
-                  <Button variant="secondary" size="sm" asChild>
-                    <a href={`/api/certificates/${c.id}`}>Descargar PDF</a>
-                  </Button>
-                ) : (
-                  <span className="text-xs text-muted-foreground">Sin PDF almacenado</span>
-                )}
-              </div>
-            ))
-          )}
-        </CardContent>
-      </Card>
-
       <DocumentDetailClient
         canMutate={allowWrite}
         documentId={doc.id}
@@ -105,6 +57,7 @@ export default async function DocumentDetailPage({ params }: Props) {
         signatories={signatories.map((s) => ({ id: s.id, name: s.name, digidId: s.digidSignatoryId }))}
         placements={doc.placements.map((p) => ({
           id: p.id,
+          signatoryId: p.signatoryId,
           page: p.page,
           x: p.x,
           y: p.y,

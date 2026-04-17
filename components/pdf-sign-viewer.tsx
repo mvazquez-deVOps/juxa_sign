@@ -1,11 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type MouseEvent, type RefObject } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist";
+import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { PdfPickPayload } from "@/types/pdf-sign";
+import type { PdfPickPayload, PdfPlacementVisual } from "@/types/pdf-sign";
 
-export type { PdfPickPayload };
+export type { PdfPickPayload, PdfPlacementVisual };
+
+const BOX_W = 120;
+const BOX_H = 44;
 
 function useContainerContentWidth(ref: RefObject<HTMLElement | null>) {
   const [w, setW] = useState(0);
@@ -24,21 +28,51 @@ function useContainerContentWidth(ref: RefObject<HTMLElement | null>) {
   return w;
 }
 
+function placementToDisplay(
+  p: PdfPlacementVisual,
+  layoutW: number,
+  layoutH: number,
+): { left: number; top: number } {
+  const rw = p.widthPx > 0 ? p.widthPx : layoutW;
+  const rh = p.heightPx > 0 ? p.heightPx : layoutH;
+  return {
+    left: (p.x / rw) * layoutW,
+    top: (p.y / rh) * layoutH,
+  };
+}
+
 function PdfCanvasPage({
   pdf,
   pageNumber,
   containerWidth,
-  markMode,
+  readOnly,
+  activeSignatoryLabel,
+  placements,
   onPick,
+  onRemovePlacement,
+  onMovePlacement,
 }: {
   pdf: PDFDocumentProxy;
   pageNumber: number;
   containerWidth: number;
-  markMode: boolean;
+  readOnly: boolean;
+  activeSignatoryLabel: string;
+  placements: PdfPlacementVisual[];
   onPick: (p: PdfPickPayload) => void;
+  onRemovePlacement: (placementId: string) => void;
+  onMovePlacement: (placementId: string, p: PdfPickPayload) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const layoutRef = useRef<{ w: number; h: number } | null>(null);
+  const [layout, setLayout] = useState<{ w: number; h: number } | null>(null);
+  const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragDelta, setDragDelta] = useState<{ dx: number; dy: number } | null>(null);
+
+  useEffect(() => {
+    layoutRef.current = layout;
+  }, [layout]);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,6 +102,11 @@ function PdfCanvasPage({
 
         renderTask = page.render({ canvasContext: ctx, viewport });
         await renderTask.promise;
+        if (!cancelled) {
+          const L = { w: viewport.width, h: viewport.height };
+          layoutRef.current = L;
+          setLayout(L);
+        }
       } catch {
         /* cancelado o error de render */
       }
@@ -79,46 +118,200 @@ function PdfCanvasPage({
     };
   }, [pdf, pageNumber, containerWidth]);
 
-  const handleClick = useCallback(
-    (e: MouseEvent<HTMLDivElement>) => {
-      if (!markMode) return;
+  const pagePlacements = placements.filter((p) => p.page === pageNumber);
+
+  const handleWrapPointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (readOnly || draggingId) return;
       const el = wrapRef.current;
-      if (!el) return;
+      const L = layoutRef.current;
+      if (!el || !L) return;
       const rect = el.getBoundingClientRect();
-      onPick({
-        page: pageNumber,
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-        widthPx: rect.width,
-        heightPx: rect.height,
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      if (x < 0 || y < 0 || x > L.w || y > L.h) {
+        setGhost(null);
+        return;
+      }
+      setGhost({
+        x: Math.max(0, Math.min(x, L.w - BOX_W)),
+        y: Math.max(0, Math.min(y, L.h - BOX_H)),
       });
     },
-    [markMode, onPick, pageNumber],
+    [readOnly, draggingId],
   );
+
+  const handleWrapLeave = useCallback(() => {
+    if (!draggingId) setGhost(null);
+  }, [draggingId]);
+
+  const handleWrapClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (readOnly) return;
+      const t = e.target as HTMLElement;
+      if (t.closest("[data-placement-marker]") || t.closest("[data-placement-remove]")) return;
+      const el = wrapRef.current;
+      const L = layoutRef.current;
+      if (!el || !L) return;
+      const rect = el.getBoundingClientRect();
+      const cx = e.clientX - rect.left;
+      const cy = e.clientY - rect.top;
+      const x = Math.max(0, Math.min(cx, L.w - BOX_W));
+      const y = Math.max(0, Math.min(cy, L.h - BOX_H));
+      onPick({
+        page: pageNumber,
+        x,
+        y,
+        widthPx: L.w,
+        heightPx: L.h,
+      });
+    },
+    [readOnly, onPick, pageNumber],
+  );
+
+  const beginMarkerDrag = useCallback(
+    (p: PdfPlacementVisual, e: React.PointerEvent) => {
+      if (readOnly) return;
+      if ((e.target as HTMLElement).closest("[data-placement-remove]")) return;
+      e.stopPropagation();
+      e.preventDefault();
+      const L = layoutRef.current;
+      if (!L) return;
+      const { left, top } = placementToDisplay(p, L.w, L.h);
+      setGhost(null);
+      setDraggingId(p.id);
+      setDragDelta({ dx: 0, dy: 0 });
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const move = (ev: PointerEvent) => {
+        setDragDelta({ dx: ev.clientX - startX, dy: ev.clientY - startY });
+      };
+      let finished = false;
+      const up = (ev: PointerEvent) => {
+        window.removeEventListener("pointermove", move);
+        if (finished) return;
+        finished = true;
+        const Lay = layoutRef.current;
+        if (!Lay) {
+          setDraggingId(null);
+          setDragDelta(null);
+          return;
+        }
+        const dx = ev.clientX - startX;
+        const dy = ev.clientY - startY;
+        let dispLeft = left + dx;
+        let dispTop = top + dy;
+        dispLeft = Math.max(0, Math.min(dispLeft, Lay.w - BOX_W));
+        dispTop = Math.max(0, Math.min(dispTop, Lay.h - BOX_H));
+        onMovePlacement(p.id, {
+          page: pageNumber,
+          x: dispLeft,
+          y: dispTop,
+          widthPx: Lay.w,
+          heightPx: Lay.h,
+        });
+        setDraggingId(null);
+        setDragDelta(null);
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up, { once: true });
+      window.addEventListener("pointercancel", up, { once: true });
+    },
+    [readOnly, onMovePlacement, pageNumber],
+  );
+
+  const labelInside = activeSignatoryLabel.trim() || "Firma aquí";
 
   return (
     <div
       ref={wrapRef}
-      className={cn("mx-auto w-fit py-2", markMode && "cursor-crosshair")}
-      onClick={handleClick}
+      className={cn("relative mx-auto w-fit py-2", !readOnly && "cursor-crosshair")}
+      onPointerMove={handleWrapPointerMove}
+      onPointerLeave={handleWrapLeave}
+      onClick={handleWrapClick}
     >
-      <canvas ref={canvasRef} className="block rounded-sm bg-white shadow-sm dark:bg-white" />
+      <canvas ref={canvasRef} className="relative z-0 block rounded-sm bg-white shadow-sm dark:bg-white" />
+      {layout ? (
+        <div
+          className="pointer-events-none absolute left-0 top-0 z-[1]"
+          style={{ width: layout.w, height: layout.h }}
+        >
+          {!readOnly && ghost && !draggingId ? (
+            <div
+              className="pointer-events-none absolute border-2 border-primary bg-primary/20 text-center shadow-sm"
+              style={{ left: ghost.x, top: ghost.y, width: BOX_W, height: BOX_H }}
+            >
+              <span className="flex h-full items-center justify-center px-1 text-[10px] font-medium leading-tight text-primary">
+                {labelInside}
+              </span>
+            </div>
+          ) : null}
+          {pagePlacements.map((p) => {
+            const { left, top } = placementToDisplay(p, layout.w, layout.h);
+            const dx = dragDelta && draggingId === p.id ? dragDelta.dx : 0;
+            const dy = dragDelta && draggingId === p.id ? dragDelta.dy : 0;
+            let dispLeft = left + dx;
+            let dispTop = top + dy;
+            dispLeft = Math.max(0, Math.min(dispLeft, layout.w - BOX_W));
+            dispTop = Math.max(0, Math.min(dispTop, layout.h - BOX_H));
+            return (
+              <div
+                key={p.id}
+                data-placement-marker
+                className="pointer-events-auto absolute z-[2] cursor-grab border-2 border-primary bg-primary/20 shadow-sm active:cursor-grabbing"
+                style={{ left: dispLeft, top: dispTop, width: BOX_W, height: BOX_H }}
+                onPointerDown={(e) => beginMarkerDrag(p, e)}
+              >
+                {!readOnly ? (
+                  <button
+                    type="button"
+                    data-placement-remove
+                    className="pointer-events-auto absolute -right-1 -top-1 z-[3] flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-destructive/40 bg-background text-destructive shadow hover:bg-destructive/10"
+                    title="Quitar marca"
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      onRemovePlacement(p.id);
+                    }}
+                  >
+                    <X className="h-3 w-3" aria-hidden />
+                    <span className="sr-only">Quitar marca</span>
+                  </button>
+                ) : null}
+                <span className="pointer-events-none flex h-full items-center justify-center px-1 text-center text-[10px] font-medium leading-tight text-primary">
+                  {p.signatoryName || labelInside}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }
 
 export default function PdfSignViewer({
   fileUrl,
-  markMode,
+  readOnly,
+  placements,
+  activeSignatoryLabel,
   onPick,
+  onRemovePlacement,
+  onMovePlacement,
 }: {
   fileUrl: string;
-  markMode: boolean;
+  readOnly: boolean;
+  placements: PdfPlacementVisual[];
+  activeSignatoryLabel: string;
   onPick: (p: PdfPickPayload) => void;
+  onRemovePlacement: (placementId: string) => void;
+  onMovePlacement: (placementId: string, p: PdfPickPayload) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const outerWidth = useContainerContentWidth(scrollRef);
-  /** Si el contenedor aún mide 0 (layout), usar ancho razonable para no dejar el lienzo vacío. */
   const innerWidth = Math.max(120, (outerWidth > 0 ? outerWidth : 640) - 24);
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -191,12 +384,15 @@ export default function PdfSignViewer({
 
   return (
     <div className="space-y-2">
-      {markMode ? (
+      {readOnly ? (
         <p className="text-sm text-muted-foreground">
-          Modo marca: el PDF se ajusta al ancho del panel. Haz clic donde va la firma (coordenadas respecto a la página
-          tal como se muestra).
+          Vista de solo lectura. Las marcas de firma se muestran en su posición guardada.
         </p>
-      ) : null}
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          Haz clic en la página para colocar un recuadro de firma, arrástralo para ajustar.
+        </p>
+      )}
       <div
         ref={scrollRef}
         className="flex h-[min(720px,75vh)] min-h-[200px] w-full min-w-0 flex-col overflow-auto rounded-lg border bg-muted/20 shadow-inner"
@@ -214,15 +410,19 @@ export default function PdfSignViewer({
                 pdf={pdf}
                 pageNumber={i + 1}
                 containerWidth={innerWidth}
-                markMode={markMode}
+                readOnly={readOnly}
+                activeSignatoryLabel={activeSignatoryLabel}
+                placements={placements}
                 onPick={onPick}
+                onRemovePlacement={onRemovePlacement}
+                onMovePlacement={onMovePlacement}
               />
             ))
           : null}
       </div>
       {pdf && numPages > 0 ? (
         <p className="text-center text-xs text-muted-foreground">
-          {numPages} página{numPages === 1 ? "" : "s"} · visor nativo (pdf.js)
+          {numPages} página{numPages === 1 ? "" : "s"}
         </p>
       ) : null}
     </div>

@@ -1,15 +1,17 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import type { UserRole } from "@prisma/client";
+import { authConfig } from "@/auth.config";
 import { dbUserFindUniqueWithOrg, dbUserIsRevoked } from "@/lib/data/repository";
 
 const DEMO_SYNTHETIC_USER_ID = "demo-gate";
 const REVOKE_REFRESH_MS = 60_000;
 
+/**
+ * Sesión JWT + credenciales. No usamos `PrismaAdapter`: el modelo `User` no sigue el esquema
+ * Account/Session/VerificationToken de Auth.js; añadirlo implicaría migración de datos.
+ */
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  trustHost: true,
-  session: { strategy: "jwt", maxAge: 60 * 60 * 8 },
-  pages: { signIn: "/login" },
+  ...authConfig,
   providers: [
     Credentials({
       name: "credentials",
@@ -41,6 +43,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
+    ...authConfig.callbacks,
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id!;
@@ -64,15 +67,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.isRevoked = false;
       }
       return token;
-    },
-    session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as UserRole;
-        session.user.organizationId = token.organizationId as string;
-        session.user.isRevoked = Boolean(token.isRevoked);
-      }
-      return session;
     },
   },
 });

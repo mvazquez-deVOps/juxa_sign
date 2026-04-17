@@ -103,7 +103,7 @@ model FolioLedgerEntry {
 
 model Company {
   id              String        @id @default(cuid())
-  digidIdClient   Int           @unique
+  digidIdClient   Int
   razonSocial     String
   rfc             String
   email           String
@@ -115,6 +115,7 @@ model Company {
   documents       Document[]
 
   @@index([organizationId])
+  @@unique([digidIdClient, organizationId])
 }
 
 model Signatory {

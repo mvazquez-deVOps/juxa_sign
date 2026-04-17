@@ -605,7 +605,15 @@ export function memoryDocumentsWithCompanyForOrg(
   return list.map((d) => {
     const company = $m().companies.get(d.companyId);
     if (!company) throw new Error("memory: documento sin empresa");
-    return { ...d, company };
+    const signatories = $m()
+      .documentSignatories.filter((x) => x.documentId === d.id)
+      .map((x) => ({ id: x.id }));
+    const companySignatoryCount = [...$m().signatories.values()].filter((s) => s.companyId === company.id).length;
+    return {
+      ...d,
+      company: { ...company, _count: { signatories: companySignatoryCount } },
+      signatories,
+    };
   });
 }
 
@@ -1043,6 +1051,39 @@ export function memoryPlacementDeleteManyForDocument(documentId: string) {
   for (const pid of [...$m().placements.keys()]) {
     if ($m().placements.get(pid)!.documentId === documentId) $m().placements.delete(pid);
   }
+}
+
+export function memoryPlacementDeleteById(placementId: string, organizationId: string): boolean {
+  seed();
+  const row = $m().placements.get(placementId);
+  if (!row) return false;
+  const d = $m().documents.get(row.documentId);
+  if (!d) return false;
+  const c = $m().companies.get(d.companyId);
+  if (!c || c.organizationId !== organizationId) return false;
+  $m().placements.delete(placementId);
+  return true;
+}
+
+export function memoryPlacementUpdateGeometry(
+  placementId: string,
+  documentId: string,
+  organizationId: string,
+  data: { page: number; x: number; y: number; widthPx: number; heightPx: number },
+): boolean {
+  seed();
+  const row = $m().placements.get(placementId);
+  if (!row || row.documentId !== documentId) return false;
+  const d = $m().documents.get(documentId);
+  if (!d) return false;
+  const c = $m().companies.get(d.companyId);
+  if (!c || c.organizationId !== organizationId) return false;
+  row.page = data.page;
+  row.x = data.x;
+  row.y = data.y;
+  row.widthPx = data.widthPx;
+  row.heightPx = data.heightPx;
+  return true;
 }
 
 export function memoryPlacementsReorder(

@@ -2,10 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import {
-  dbCompanyCreate,
-  dbCompanyFindFirstByDigidInOrg,
-} from "@/lib/data/repository";
+import { dbCompanyCreate, dbCompanyFindFirstByDigidInOrg } from "@/lib/data/repository";
 import { registrarEmpresa } from "@/lib/digid";
 import { gateOrgStructureMutation } from "@/lib/gate";
 
@@ -46,6 +43,7 @@ export async function createCompany(
   const g = await gateOrgStructureMutation();
   if (!g.ok) return { ok: false, message: g.message };
 
+  // Siempre acotar existencia/creación a la organización de la sesión (multi-tenant).
   const orgId = g.session.user.organizationId?.trim();
   if (!orgId) {
     return {

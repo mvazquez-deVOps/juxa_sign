@@ -18,7 +18,7 @@ export default async function EmpresasPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Clientes</h1>
           <p className="text-muted-foreground">
-            Empresas y personas físicas registradas en Juxa Sign.
+            Empresas y personas físicas registradas en tu cuenta.
           </p>
         </div>
         {allowWrite ? (

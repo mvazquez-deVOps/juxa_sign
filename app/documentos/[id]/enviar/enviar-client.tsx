@@ -103,7 +103,8 @@ export function EnviarClient({
   const [emailBulkDraft, setEmailBulkDraft] = useState("");
 
   const [sendTypeSign, setSendTypeSign] = useState<"1" | "2">("2");
-  const [sendFolioPremium, setSendFolioPremium] = useState(false);
+  /** Folio premium / NOM-151 siempre activo en envío manual (no configurable en UI). */
+  const sendFolioPremium = true;
   const [sendColorSign, setSendColorSign] = useState("#000000");
   const [colorDraft, setColorDraft] = useState("#000000");
   const [sendRemider, setSendRemider] = useState<"1" | "2" | "3">("1");
@@ -115,7 +116,7 @@ export function EnviarClient({
   const sendRemiderLabel = sendRemider === "1" ? "24 horas" : sendRemider === "2" ? "48 horas" : "72 horas";
   const sendTypeSignLabel = sendTypeSign === "2" ? "Autógrafa" : "Electrónica";
 
-  const sendFolioCost = useMemo(() => folioCreditsForSend(sendFolioPremium), [sendFolioPremium]);
+  const sendFolioCost = useMemo(() => folioCreditsForSend(sendFolioPremium), []);
   const insufficientFoliosForSend =
     allowWrite && enforceFolioBalanceCheck && userFolioBalance < sendFolioCost;
 
@@ -535,12 +536,20 @@ export function EnviarClient({
           <CardHeader>
             <CardTitle>Opciones de envío</CardTitle>
             <CardDescription>
-              Configura el tipo de firma, el folio premium, el color, los recordatorios y el observador.
+              Tipo de firma, color, recordatorios y observador. La certificación NOM-151 / folio premium va siempre
+              incluida en el envío.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="typeSign">Tipo de firma</Label>
+              <div className="flex flex-wrap items-baseline">
+                <Label htmlFor="typeSign" className="shrink-0">
+                  Tipo de firma
+                </Label>
+                <span className="ml-2 text-xs font-normal text-muted-foreground">
+                  (Incluye certificación NOM-151 por defecto)
+                </span>
+              </div>
               <select
                 id="typeSign"
                 value={sendTypeSign}
@@ -555,82 +564,73 @@ export function EnviarClient({
                 <option value="2">Autógrafa</option>
               </select>
             </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="folioPremium"
-                checked={sendFolioPremium}
-                onChange={(e) => setSendFolioPremium(e.target.checked)}
-                disabled={!allowWrite}
-                className="h-4 w-4"
-              />
-              <Label htmlFor="folioPremium">Folio premium / NOM-151</Label>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="colorSign">Color firma</Label>
-              <div className="flex flex-wrap items-center gap-3">
-                <input
-                  type="color"
-                  id="colorSignPicker"
-                  className={cn(
-                    "h-10 w-14 shrink-0 cursor-pointer rounded border border-input bg-background disabled:cursor-not-allowed disabled:opacity-60",
-                  )}
-                  value={parseHexColor(colorDraft) ?? parseHexColor(sendColorSign) ?? "#000000"}
-                  onChange={(e) => {
-                    const v = e.target.value.toLowerCase();
-                    setSendColorSign(v);
-                    setColorDraft(v);
-                  }}
-                  disabled={!allowWrite}
-                  aria-label="Selector de color de firma"
-                />
-                <div
-                  className="h-10 w-10 shrink-0 rounded border border-input shadow-inner"
-                  style={{
-                    backgroundColor: parseHexColor(colorDraft) ?? parseHexColor(sendColorSign) ?? "#000000",
-                  }}
-                  title="Vista previa"
-                  aria-hidden
-                />
-                <Input
-                  id="colorSign"
-                  className="min-w-[8rem] flex-1 font-mono text-sm"
-                  value={colorDraft}
-                  onChange={(e) => setColorDraft(e.target.value)}
-                  onBlur={() => {
-                    const p = parseHexColor(colorDraft);
-                    if (p) {
-                      setSendColorSign(p);
-                      setColorDraft(p);
-                    } else {
-                      toast.error("Formato inválido. Usa #RRGGBB (6 hexadecimales).");
-                      setColorDraft(sendColorSign);
-                    }
-                  }}
-                  placeholder="#000000"
-                  disabled={!allowWrite}
-                  autoComplete="off"
-                  spellCheck={false}
-                  aria-describedby="colorSign-hint"
-                />
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="min-w-0 space-y-2">
+                <Label htmlFor="colorSign">Color firma</Label>
+                <div className="flex max-w-md flex-wrap items-center gap-3">
+                  <input
+                    type="color"
+                    id="colorSignPicker"
+                    className={cn(
+                      "h-10 w-14 shrink-0 cursor-pointer rounded border border-input bg-background disabled:cursor-not-allowed disabled:opacity-60",
+                    )}
+                    value={parseHexColor(colorDraft) ?? parseHexColor(sendColorSign) ?? "#000000"}
+                    onChange={(e) => {
+                      const v = e.target.value.toLowerCase();
+                      setSendColorSign(v);
+                      setColorDraft(v);
+                    }}
+                    disabled={!allowWrite}
+                    aria-label="Selector de color de firma"
+                  />
+                  <div
+                    className="h-10 w-10 shrink-0 rounded border border-input shadow-inner"
+                    style={{
+                      backgroundColor: parseHexColor(colorDraft) ?? parseHexColor(sendColorSign) ?? "#000000",
+                    }}
+                    title="Vista previa"
+                    aria-hidden
+                  />
+                  <Input
+                    id="colorSign"
+                    className="min-w-0 max-w-[9.5rem] shrink font-mono text-sm"
+                    value={colorDraft}
+                    onChange={(e) => setColorDraft(e.target.value)}
+                    onBlur={() => {
+                      const p = parseHexColor(colorDraft);
+                      if (p) {
+                        setSendColorSign(p);
+                        setColorDraft(p);
+                      } else {
+                        toast.error("Formato inválido. Usa #RRGGBB (6 hexadecimales).");
+                        setColorDraft(sendColorSign);
+                      }
+                    }}
+                    placeholder="#000000"
+                    disabled={!allowWrite}
+                    autoComplete="off"
+                    spellCheck={false}
+                    aria-describedby="colorSign-hint"
+                  />
+                </div>
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="remider">Recordatorio al firmante</Label>
-              <select
-                id="remider"
-                value={sendRemider}
-                onChange={(e) => setSendRemider(e.target.value as "1" | "2" | "3")}
-                disabled={!allowWrite}
-                className={cn(
-                  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  !allowWrite && "cursor-not-allowed opacity-60",
-                )}
-              >
-                <option value="1">24 horas</option>
-                <option value="2">48 horas</option>
-                <option value="3">72 horas</option>
-              </select>
+              <div className="min-w-0 space-y-2">
+                <Label htmlFor="remider">Recordatorio al firmante cada:</Label>
+                <select
+                  id="remider"
+                  value={sendRemider}
+                  onChange={(e) => setSendRemider(e.target.value as "1" | "2" | "3")}
+                  disabled={!allowWrite}
+                  className={cn(
+                    "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    !allowWrite && "cursor-not-allowed opacity-60",
+                  )}
+                >
+                  <option value="1">24 horas</option>
+                  <option value="2">48 horas</option>
+                  <option value="3">72 horas</option>
+                </select>
+              </div>
             </div>
             <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
               <p className="text-sm font-medium">Observador (opcional)</p>
@@ -715,8 +715,7 @@ export function EnviarClient({
                 Tipo de firma: <strong className="text-foreground">{sendTypeSignLabel}</strong>
               </li>
               <li>
-                Folio premium / NOM-151:{" "}
-                <strong className="text-foreground">{sendFolioPremium ? "Sí" : "No"}</strong>
+                Folio premium / NOM-151: <strong className="text-foreground">Sí (siempre incluido)</strong>
               </li>
               <li>
                 Color firma: <strong className="text-foreground">{sendColorSign.trim() || "—"}</strong>
@@ -759,7 +758,7 @@ export function EnviarClient({
                 <input type="hidden" name="typeSign" value={sendTypeSign} />
                 <input type="hidden" name="colorSign" value={sendColorSign} />
                 <input type="hidden" name="remider" value={sendRemider} />
-                {sendFolioPremium ? <input type="hidden" name="folioPremium" value="on" /> : null}
+                <input type="hidden" name="folioPremium" value="on" />
                 <input type="hidden" name="observerEmail" value={sendObserverEmail} />
                 <input type="hidden" name="observerName" value={sendObserverName} />
                 <input type="hidden" name="observerPhone" value={sendObserverPhone} />
