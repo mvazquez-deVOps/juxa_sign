@@ -48,10 +48,10 @@ export async function requireAdminContext(): Promise<{
   };
 }
 
-/** Lectura de /hoja-de-ruta-devs: admins de org, superadmin en su org, o rol SANDBOX (sin abrir mutaciones en esa ruta). */
+/** Lectura de /hoja-de-ruta-devs: solo administradores de org o superadmin (misma regla que el resto de /admin). */
 export async function requireDevRoadmapViewerContext(): Promise<{ organizationId: string; role: UserRole }> {
   const ctx = await requireOrgContext();
-  if (ctx.role !== "ADMIN" && ctx.role !== "SUPERADMIN" && ctx.role !== "SANDBOX") {
+  if (ctx.role !== "ADMIN" && ctx.role !== "SUPERADMIN") {
     redirect("/");
   }
   return ctx;

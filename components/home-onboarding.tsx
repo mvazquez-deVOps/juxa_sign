@@ -56,7 +56,7 @@ export function HomeOnboarding({
   showSandboxSection,
 }: {
   counts: Counts;
-  /** Checklist sandbox, E2E y enlaces de desarrollo (rol SANDBOX). */
+  /** Checklist sandbox / E2E (p. ej. cuando el panel corre en modo memoria). */
   showSandboxSection: boolean;
 }) {
   const rec = nextRecommendation(counts);

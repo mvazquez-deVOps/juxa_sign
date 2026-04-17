@@ -66,7 +66,7 @@ export function TeamEquipoClient({
   const [isRevoking, setIsRevoking] = useState(false);
   const [revokeError, setRevokeError] = useState<string | null>(null);
 
-  const [role, setRole] = useState<string>("OPERATOR");
+  const [role, setRole] = useState<string>("USER");
   const [inviteState, inviteAction, invitePending] = useActionState(createOrganizationInvite, inviteInitial);
   const [revokeState, revokeAction, revokePending] = useActionState(revokeOrganizationInvite, revokeInitial);
   const [limitsState, limitsAction, limitsPending] = useActionState(updateOrganizationMaxUsers, limitsInitial);
@@ -299,9 +299,8 @@ export function TeamEquipoClient({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="OPERATOR">Operador</SelectItem>
                         <SelectItem value="VIEWER">Solo visualización</SelectItem>
-                        <SelectItem value="USER">Consumidor de folios (operación)</SelectItem>
+                        <SelectItem value="USER">Usuario (operación y folios)</SelectItem>
                         <SelectItem value="ADMIN">Administrador</SelectItem>
                       </SelectContent>
                     </Select>

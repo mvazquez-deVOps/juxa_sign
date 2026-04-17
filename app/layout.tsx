@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { AppLayoutClient } from "@/components/app-layout-client";
 import { isMemoryDataStore } from "@/lib/data/mode";
-import { isOrganizationAdmin, panelRoleLabel, showsPanelSandboxHints } from "@/lib/roles";
+import { isOrganizationAdmin, panelRoleLabel } from "@/lib/roles";
 import { DEMO_SYNTHETIC_USER_ID, resolveSession } from "@/lib/session";
 import "./globals.css";
 
@@ -36,8 +36,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const consumerFolioNav = role === "USER";
   const panelReadOnlyNav = role === "VIEWER";
   const memoryDataStore = isMemoryDataStore();
-  const memoryDevSubtitle =
-    memoryDataStore && role != null && showsPanelSandboxHints(role);
+  /** En modo memoria, subtítulo técnico en el shell para cualquier sesión autenticada. */
+  const memoryDevSubtitle = memoryDataStore && role != null;
 
   return (
     <html lang="es" suppressHydrationWarning>

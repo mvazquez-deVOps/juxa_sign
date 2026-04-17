@@ -10,13 +10,10 @@ datasource db {
 enum UserRole {
   /// Visor homologado con potencial consumidor: consulta panel y catálogo de planes; sin mutaciones ni envío a firma.
   VIEWER
-  OPERATOR
-  /// Consumidor de folios en panel (cartera propia; no es el firmante DIGID)
+  /// Consumidor de folios en panel (cartera propia; no es el firmante DIGID) y operación general del tenant.
   USER
   ADMIN
   SUPERADMIN
-  /// QA / desarrollo: mismos permisos operativos que OPERATOR; inicio con checklist sandbox, E2E y avance MVP.
-  SANDBOX
 }
 
 enum FolioLedgerReason {
@@ -51,7 +48,7 @@ model User {
   id             String       @id @default(cuid())
   email          String       @unique
   passwordHash   String
-  role           UserRole     @default(OPERATOR)
+  role           UserRole     @default(USER)
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   /// Saldo de créditos de folio (envío estándar = 1, premium = 2)
@@ -211,7 +208,7 @@ model OrganizationInvite {
   organizationId  String
   organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   email           String
-  role            UserRole     @default(OPERATOR)
+  role            UserRole     @default(USER)
   tokenHash       String
   expiresAt       DateTime
   invitedByUserId String?

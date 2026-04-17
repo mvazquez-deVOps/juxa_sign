@@ -162,7 +162,7 @@ export const productionPhases: DevRoadmapPhase[] = [
 /** Trabajo accionable sin Postgres persistente (pulir flujo para devs). */
 export const devRoadmapWorkWithoutDb: DevRoadmapPhaseItem[] = [
   {
-    text: "Ampliar Playwright (e2e/auth.spec.ts): login VIEWER o SANDBOX, smoke /empresas, /documentos, /api/health, /prueba-e2e",
+    text: "Ampliar Playwright (e2e/auth.spec.ts): login VIEWER o USER, smoke /empresas, /documentos, /api/health, /prueba-e2e",
     status: "todo",
   },
   {

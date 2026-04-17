@@ -23,25 +23,13 @@ export function canAssignFolioWalletToApiKey(role: UserRole): boolean {
   return !isPanelReadOnlyRole(role);
 }
 
-/** Inicio con checklist sandbox y atajos E2E (rol interno de pruebas). El avance del proyecto ponderado está en /admin/proyecto (admins). */
-export function showsPanelSandboxHints(role: UserRole): boolean {
-  return role === "SANDBOX";
-}
-
-/** Notas internas en guías (flujo de producto, hoja de ruta): solo superadmin y rol de pruebas. */
-export function showsInternalGuideComments(role: UserRole): boolean {
-  return role === "SUPERADMIN" || role === "SANDBOX";
-}
-
 /** Etiqueta en español para el chip de sesión y tablas. */
 export function panelRoleLabel(role: UserRole): string {
   const labels: Record<UserRole, string> = {
     VIEWER: "Visor · potencial consumidor",
-    OPERATOR: "Operador",
-    USER: "Consumidor de folios",
+    USER: "Usuario",
     ADMIN: "Administrador",
     SUPERADMIN: "Superadministrador",
-    SANDBOX: "Pruebas / sandbox",
   };
   return labels[role] ?? role;
 }

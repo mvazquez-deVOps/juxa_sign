@@ -1,8 +1,8 @@
 /**
- * Organización por defecto, empresas huérfanas, usuarios bcrypt: ADMIN, opcional OPERATOR, SANDBOX, USER, VIEWER y SUPERADMIN.
- * ADMIN: ADMIN_EMAIL + ADMIN_PASSWORD. OPERATOR: OPERATOR_EMAIL + OPERATOR_PASSWORD (inicio tipo producto final).
- * SANDBOX: SANDBOX_EMAIL + SANDBOX_PASSWORD (inicio con checklist sandbox y avance MVP; permisos como OPERATOR).
- * VIEWER: VIEWER_EMAIL + VIEWER_PASSWORD (solo visualización). SUPERADMIN: SUPERADMIN_EMAIL + SUPERADMIN_PASSWORD (/superadmin).
+ * Organización por defecto, empresas huérfanas, usuarios bcrypt: ADMIN, opcional USER (env OPERATOR_*), segunda USER (SANDBOX_*), VIEWER y SUPERADMIN.
+ * ADMIN: ADMIN_EMAIL + ADMIN_PASSWORD. OPERATOR_EMAIL + OPERATOR_PASSWORD: usuario operativo (rol USER).
+ * SANDBOX_EMAIL + SANDBOX_PASSWORD: segunda cuenta de pruebas (rol USER).
+ * VIEWER: VIEWER_EMAIL + VIEWER_PASSWORD. SUPERADMIN: SUPERADMIN_EMAIL + SUPERADMIN_PASSWORD (/superadmin).
  */
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
@@ -70,17 +70,17 @@ async function main() {
         create: {
           email: opEmail,
           passwordHash: opHash,
-          role: "OPERATOR",
+          role: "USER",
           organizationId: org.id,
           folioBalance: 1000,
         },
         update: {
           passwordHash: opHash,
-          role: "OPERATOR",
+          role: "USER",
           organizationId: org.id,
         },
       });
-      console.log(`[seed] Usuario operador listo: ${opEmail} (rol OPERATOR).`);
+      console.log(`[seed] Usuario operativo listo: ${opEmail} (rol USER).`);
     }
   } else {
     console.log(
@@ -99,7 +99,7 @@ async function main() {
       process.env.SUPERADMIN_EMAIL?.trim().toLowerCase() === sandboxEmail
     ) {
       console.warn(
-        "[seed] SANDBOX_EMAIL coincide con otro usuario del seed; omite cuenta SANDBOX para evitar duplicado.",
+        "[seed] SANDBOX_EMAIL coincide con otro usuario del seed; omite esa cuenta de pruebas para evitar duplicado.",
       );
     } else {
       const sandboxHash = await bcrypt.hash(sandboxPlain, 12);
@@ -108,21 +108,21 @@ async function main() {
         create: {
           email: sandboxEmail,
           passwordHash: sandboxHash,
-          role: "SANDBOX",
+          role: "USER",
           organizationId: org.id,
           folioBalance: 1000,
         },
         update: {
           passwordHash: sandboxHash,
-          role: "SANDBOX",
+          role: "USER",
           organizationId: org.id,
         },
       });
-      console.log(`[seed] Usuario pruebas/sandbox listo: ${sandboxEmail} (rol SANDBOX).`);
+      console.log(`[seed] Usuario de pruebas listo: ${sandboxEmail} (rol USER).`);
     }
   } else {
     console.log(
-      "[seed] Omitido SANDBOX: define SANDBOX_EMAIL y SANDBOX_PASSWORD para cuenta con ayudas de sandbox en inicio.",
+      "[seed] Omitido usuario SANDBOX_*: define SANDBOX_EMAIL y SANDBOX_PASSWORD para segunda cuenta USER de pruebas.",
     );
   }
 

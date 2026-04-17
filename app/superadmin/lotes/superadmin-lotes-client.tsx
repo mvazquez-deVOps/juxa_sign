@@ -22,11 +22,9 @@ const MAX_BATCH = 25;
 
 const ROLE_SORT: Partial<Record<UserRole, number>> = {
   ADMIN: 0,
-  OPERATOR: 1,
-  SANDBOX: 2,
-  USER: 3,
-  VIEWER: 4,
-  SUPERADMIN: 5,
+  USER: 1,
+  VIEWER: 2,
+  SUPERADMIN: 3,
 };
 
 type JobRow = {

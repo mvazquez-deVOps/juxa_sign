@@ -18,19 +18,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { folioCreditsForSend } from "@/lib/folio-cost";
-import { Copy, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
+import { ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
 import { ActionErrorDetails } from "@/components/action-error-details";
-
-const DEFAULT_SIGNER_EMAIL_TEMPLATE = `Hola {nombre},
-
-Te compartimos tu enlace para firmar el documento:
-{url}
-
-Si tienes dudas, responde a este correo.`;
 
 const initial: SigningActionState | null = null;
 
@@ -99,8 +91,6 @@ export function EnviarClient({
   const [reenviarFor, setReenviarFor] = useState<string | null>(null);
   const [, startReenviar] = useTransition();
   const router = useRouter();
-  const [emailTemplate, setEmailTemplate] = useState(DEFAULT_SIGNER_EMAIL_TEMPLATE);
-  const [emailBulkDraft, setEmailBulkDraft] = useState("");
 
   const [sendTypeSign, setSendTypeSign] = useState<"1" | "2">("2");
   /** Folio premium / NOM-151 siempre activo en envío manual (no configurable en UI). */
@@ -929,68 +919,6 @@ export function EnviarClient({
               ))}
             </ul>
           ) : null}
-
-          <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
-            <div>
-              <p className="text-sm font-medium">Plantilla de correo para reenvió de invitación</p>
-            </div>
-            <Textarea
-              value={emailTemplate}
-              onChange={(e) => setEmailTemplate(e.target.value)}
-              rows={6}
-              className="font-mono text-xs"
-              disabled={!allowWrite}
-            />
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  void navigator.clipboard.writeText(emailTemplate);
-                  toast.success("Plantilla copiada");
-                }}
-              >
-                <Copy className="mr-2 h-4 w-4" />
-                Copiar plantilla
-              </Button>
-              {urls.length > 0 ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  disabled={!allowWrite}
-                  onClick={() => {
-                    const blocks = urls.map((u) =>
-                      emailTemplate.replaceAll("{nombre}", u.name).replaceAll("{url}", u.url),
-                    );
-                    setEmailBulkDraft(blocks.join("\n\n────────\n\n"));
-                    toast.success("Borrador generado");
-                  }}
-                >
-                  Rellenar con URLs mostradas
-                </Button>
-              ) : null}
-            </div>
-            {emailBulkDraft ? (
-              <div className="space-y-2">
-                <Label className="text-xs">Borrador para varios destinatarios</Label>
-                <Textarea readOnly value={emailBulkDraft} rows={10} className="font-mono text-xs" />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    void navigator.clipboard.writeText(emailBulkDraft);
-                    toast.success("Borrador copiado");
-                  }}
-                >
-                  <Copy className="mr-2 h-4 w-4" />
-                  Copiar borrador
-                </Button>
-              </div>
-            ) : null}
-          </div>
 
           <Button variant="link" className="h-auto w-fit p-0" asChild>
             <Link href="/documentos">Volver al listado</Link>

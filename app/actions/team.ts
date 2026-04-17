@@ -67,7 +67,7 @@ export type TeamInviteState = {
 
 const inviteSchema = z.object({
   email: z.string().email("Correo inválido"),
-  role: z.enum(["OPERATOR", "VIEWER", "ADMIN", "USER"]),
+  role: z.enum(["VIEWER", "ADMIN", "USER"]),
 });
 
 export async function createOrganizationInvite(

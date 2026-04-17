@@ -73,7 +73,7 @@ export async function requireOrgSession(): Promise<MutationGate> {
   return { ok: true, session };
 }
 
-/** Consulta remota que actualiza `status` en base: permitida para OPERATOR/USER/ADMIN; no para VIEWER. */
+/** Consulta remota que actualiza `status` en base: permitida para USER/ADMIN; no para VIEWER. */
 export async function gateDocumentStatusSync(): Promise<MutationGate> {
   const g = await requireOrgSession();
   if (!g.ok) return g;
@@ -93,18 +93,12 @@ export function canSyncRemoteDocumentStatus(role: UserRole): boolean {
 
 /** Alta de empresas, firmantes, documento nuevo y configuración (no aplica a USER). */
 export function canMutateOrgStructure(role: UserRole): boolean {
-  return role === "OPERATOR" || role === "SANDBOX" || role === "ADMIN" || role === "SUPERADMIN";
+  return role === "ADMIN" || role === "SUPERADMIN";
 }
 
 /** Marcas, asignación y envío a firma (incluye USER con cartera). */
 export function canMutateSigningFlow(role: UserRole): boolean {
-  return (
-    role === "OPERATOR" ||
-    role === "SANDBOX" ||
-    role === "ADMIN" ||
-    role === "SUPERADMIN" ||
-    role === "USER"
-  );
+  return role === "ADMIN" || role === "SUPERADMIN" || role === "USER";
 }
 
 /** @deprecated Preferir canMutateOrgStructure o canMutateSigningFlow según pantalla. */

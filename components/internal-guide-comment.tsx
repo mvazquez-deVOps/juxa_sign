@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import type { UserRole } from "@prisma/client";
-import { showsInternalGuideComments } from "@/lib/roles";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -12,17 +11,15 @@ type InternalGuideCommentProps = {
   children: ReactNode;
 };
 
-/**
- * Callout visible solo para SUPERADMIN y SANDBOX (notas PM / equipo en guías embebidas).
- */
+/** Callout visible solo para superadministrador (notas PM / equipo en guías embebidas). */
 export function InternalGuideComment({
   role,
   title = "Nota interna (equipo)",
-  description = "Visible solo para superadministrador y rol de pruebas / sandbox.",
+  description = "Visible solo para superadministrador.",
   className,
   children,
 }: InternalGuideCommentProps) {
-  if (!showsInternalGuideComments(role)) {
+  if (role !== "SUPERADMIN") {
     return null;
   }
 
