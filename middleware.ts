@@ -23,6 +23,8 @@ function isDemoPublic(pathname: string) {
   return (
     pathname === "/login" ||
     pathname.startsWith("/login/") ||
+    pathname === "/acceso-revocado" ||
+    pathname.startsWith("/acceso-revocado/") ||
     pathname === "/registro" ||
     pathname.startsWith("/registro/") ||
     pathname.startsWith("/invitacion/") ||
@@ -99,6 +101,7 @@ const withNextAuth = auth((req) => {
   const path = req.nextUrl.pathname;
   const isLogin = path === "/login" || path.startsWith("/login/");
   const isRegister = path === "/registro" || path.startsWith("/registro/");
+  const isAccesoRevocado = path === "/acceso-revocado" || path.startsWith("/acceso-revocado/");
   const isInviteAccept = path.startsWith("/invitacion/");
   const isAuthApi = path.startsWith("/api/auth");
   const isWebhook = path.startsWith("/api/webhooks/digid");
@@ -126,11 +129,28 @@ const withNextAuth = auth((req) => {
   }
 
   if (!req.auth) {
-    if (isLogin || isInviteAccept || isRegister) return NextResponse.next();
+    if (isLogin || isInviteAccept || isRegister || isAccesoRevocado) return NextResponse.next();
     const url = req.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("callbackUrl", path);
     return NextResponse.redirect(url);
+  }
+
+  const sessionIsRevoked = Boolean(req.auth.user?.isRevoked);
+
+  if (sessionIsRevoked) {
+    const exemptRevoked =
+      isAccesoRevocado ||
+      isAuthApi ||
+      isStaticPath ||
+      isPublicDemoSigningPdf(path) ||
+      isWebhook ||
+      isPublicApiV1 ||
+      isProxyPdf ||
+      isDiagnosticoDigid;
+    if (!exemptRevoked) {
+      return NextResponse.redirect(new URL("/acceso-revocado", req.url));
+    }
   }
 
   if (isLogin && req.nextUrl.searchParams.get("reason") === "sesion-invalida") {
@@ -138,11 +158,18 @@ const withNextAuth = auth((req) => {
   }
 
   if (isLogin || isRegister) {
+    if (sessionIsRevoked) {
+      return NextResponse.redirect(new URL("/acceso-revocado", req.url));
+    }
     return NextResponse.redirect(new URL("/", req.url));
   }
 
   if (path.startsWith("/superadmin") && req.auth?.user?.role !== "SUPERADMIN") {
     return NextResponse.redirect(new URL("/", req.url));
+  }
+
+  if (sessionIsRevoked) {
+    return NextResponse.next();
   }
 
   if (req.auth?.user?.role === "USER") {

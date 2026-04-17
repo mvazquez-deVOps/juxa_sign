@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { UserRole } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import { isMemoryDataStore } from "@/lib/data/mode";
 import {
   dbOrganizationInviteEmailLabel,
   dbOrgInviteDelete,
@@ -151,6 +153,69 @@ export async function createOrganizationInvite(
 }
 
 export type TeamRevokeState = { ok: boolean; message?: string };
+
+export type RevokeMemberAccessResult = { ok: true; message?: string } | { ok: false; message: string };
+
+const revokeMemberUserIdSchema = z.string().min(1).max(128);
+
+/**
+ * Revoca el acceso al panel de un miembro: marca `isRevoked` y deja el rol en USER.
+ * Solo administradores de la organización (ADMIN o SUPERADMIN). No elimina el registro.
+ */
+export async function revokeMemberAccess(userId: string): Promise<RevokeMemberAccessResult> {
+  const parsedId = revokeMemberUserIdSchema.safeParse(userId);
+  if (!parsedId.success) {
+    return { ok: false, message: "Identificador de usuario inválido." };
+  }
+
+  const admin = await requireAdmin();
+  if ("error" in admin) return { ok: false, message: admin.error };
+
+  if (isMemoryDataStore()) {
+    return { ok: false, message: "Revocar miembros no está disponible en el almacén en memoria." };
+  }
+
+  const targetId = parsedId.data;
+  if (targetId === admin.userId) {
+    return { ok: false, message: "No puedes revocar tu propio acceso." };
+  }
+
+  const target = await prisma.user.findFirst({
+    where: { id: targetId, organizationId: admin.organizationId },
+    select: { id: true, role: true, isRevoked: true },
+  });
+
+  if (!target) {
+    return { ok: false, message: "Usuario no encontrado en esta organización." };
+  }
+
+  if (target.isRevoked) {
+    return { ok: false, message: "El acceso de este usuario ya estaba revocado." };
+  }
+
+  if (target.role === "ADMIN" || target.role === "SUPERADMIN") {
+    const otherAdmins = await prisma.user.count({
+      where: {
+        organizationId: admin.organizationId,
+        isRevoked: false,
+        role: { in: ["ADMIN", "SUPERADMIN"] },
+        id: { not: targetId },
+      },
+    });
+    if (otherAdmins === 0) {
+      return { ok: false, message: "No puedes revocar al único administrador de la organización." };
+    }
+  }
+
+  await prisma.user.update({
+    where: { id: targetId },
+    data: { isRevoked: true, role: "USER" },
+  });
+
+  revalidatePath("/configuracion");
+  revalidatePath("/configuracion/equipo");
+  return { ok: true, message: "Acceso del miembro revocado." };
+}
 
 export async function revokeOrganizationInvite(
   _prev: TeamRevokeState | null,

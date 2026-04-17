@@ -50,7 +50,7 @@ export function SuperadminPruebaEnvioFirmaClient({
     <form action={action} className="max-w-xl space-y-4">
       <input type="hidden" name="companyId" value={companyId} />
       <div className="space-y-2">
-        <Label htmlFor="lab-company">Cliente (empresa DIGID)</Label>
+        <Label htmlFor="lab-company">Cliente</Label>
         <Select value={companyId} onValueChange={setCompanyId}>
           <SelectTrigger id="lab-company" className="w-full">
             <SelectValue placeholder="Elige cliente" />

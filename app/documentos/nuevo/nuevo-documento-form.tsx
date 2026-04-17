@@ -44,15 +44,12 @@ export function NuevoDocumentoForm({
   memoryDataStore,
   justRegisteredClient,
   preselectCompanyId,
-  autoDemoClientHint,
 }: {
   companies: { id: string; razonSocial: string }[];
   memoryDataStore: boolean;
   justRegisteredClient?: boolean;
   /** Tras alta desde /empresas/nueva (recarga completa): seleccionar este cliente. */
   preselectCompanyId?: string;
-  /** Organización sin clientes: se insertó el cliente de prueba automático. */
-  autoDemoClientHint?: boolean;
 }) {
   const router = useRouter();
   const companiesPropRef = useRef(companiesProp);
@@ -153,21 +150,8 @@ export function NuevoDocumentoForm({
       {memoryDataStore ? (
         <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-950 dark:text-amber-100">
           <span className="font-medium text-foreground">Modo memoria:</span> al reiniciar el servidor Node se pierden
-          clientes y documentos. Para pruebas largas usa PostgreSQL sin <code className="text-[11px]">JUXA_DATA_STORE=memory</code>.
-          {autoDemoClientHint ? (
-            <>
-              {" "}
-              Si tu organización no tenía clientes, se añadió automáticamente{" "}
-              <span className="font-medium text-foreground">Cliente de prueba Juxa</span> para que puedas elegir PDF y seguir el
-              flujo.
-            </>
-          ) : null}
-        </p>
-      ) : autoDemoClientHint ? (
-        <p className="rounded-lg border border-muted-foreground/25 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-          Tu organización no tenía clientes; se creó{" "}
-          <span className="font-medium text-foreground">Cliente de prueba Juxa</span> (solo con DIGID en modo simulación) para
-          poder subir un PDF y probar el flujo.
+          clientes y documentos. Para pruebas largas usa PostgreSQL sin{" "}
+          <code className="text-[11px]">JUXA_DATA_STORE=memory</code>.
         </p>
       ) : null}
 
@@ -228,7 +212,7 @@ export function NuevoDocumentoForm({
                 <form action={uploadAction} className="space-y-4">
                   <input type="hidden" name="companyId" value={resolvedCompanyId} />
                   <div className="space-y-2">
-                    <Label>Cliente (empresa en DIGID)</Label>
+                    <Label>Cliente</Label>
                     <Select value={resolvedCompanyId || undefined} onValueChange={setCompanyId}>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecciona cliente" />

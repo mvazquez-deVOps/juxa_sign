@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Building2, Users, FileText, LayoutDashboard, Settings, Send, Map, TrendingUp, UserPlus, Layers, KeyRound, Shield, Coins, CircleHelp, FlaskConical, Wallet2, WalletCards, } from "lucide-react";
@@ -54,7 +53,6 @@ export function AppShell({
   panelReadOnlyNav,
   memoryDataStore,
   memoryDevSubtitle,
-  trialBanner,
 }: {
   children: React.ReactNode;
   pathname: string;
@@ -66,8 +64,6 @@ export function AppShell({
   panelReadOnlyNav?: boolean;
   memoryDataStore: boolean;
   memoryDevSubtitle?: boolean;
-  /** Aviso de periodo de prueba (registro SaaS). */
-  trialBanner?: ReactNode;
 }) {
   const memoryMode = memoryDataStore;
   const platformNav = showSuperAdminNav
@@ -174,7 +170,6 @@ export function AppShell({
           </div>
         </header>
         <main className="mx-auto max-w-6xl p-4 md:p-8">
-          {trialBanner}
           {children}
         </main>
       </div>

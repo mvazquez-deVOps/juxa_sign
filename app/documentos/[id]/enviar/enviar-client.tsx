@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { folioCreditsForSend } from "@/lib/folio-cost";
 import { Copy, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
 import { ActionErrorDetails } from "@/components/action-error-details";
 
@@ -51,6 +52,8 @@ function parseHexColor(input: string): string | null {
 
 export function EnviarClient({
   canMutate: allowWrite,
+  userFolioBalance,
+  enforceFolioBalanceCheck,
   documentId,
   documentName,
   documentCompanyId,
@@ -59,6 +62,10 @@ export function EnviarClient({
   signatories,
 }: {
   canMutate: boolean;
+  /** Saldo de la sesión que paga el envío (alineado con `sendDocumentForSigning`). */
+  userFolioBalance: number;
+  /** Si es false (demo / `JUXA_SKIP_FOLIO_DEBIT`), no se aplica la UX de saldo en cliente. */
+  enforceFolioBalanceCheck: boolean;
   documentId: string;
   documentName: string;
   documentCompanyId: string;
@@ -107,6 +114,10 @@ export function EnviarClient({
 
   const sendRemiderLabel = sendRemider === "1" ? "24 horas" : sendRemider === "2" ? "48 horas" : "72 horas";
   const sendTypeSignLabel = sendTypeSign === "2" ? "Autógrafa" : "Electrónica";
+
+  const sendFolioCost = useMemo(() => folioCreditsForSend(sendFolioPremium), [sendFolioPremium]);
+  const insufficientFoliosForSend =
+    allowWrite && enforceFolioBalanceCheck && userFolioBalance < sendFolioCost;
 
   const placementKey = useMemo(
     () => placementRows.map((p) => `${p.id}:${p.sortOrder}`).join("|"),
@@ -753,13 +764,35 @@ export function EnviarClient({
                 <input type="hidden" name="observerName" value={sendObserverName} />
                 <input type="hidden" name="observerPhone" value={sendObserverPhone} />
                 {sendObserverAprove ? <input type="hidden" name="observerAprove" value="on" /> : null}
-                <div className="flex flex-wrap gap-2">
-                  <Button type="button" variant="outline" onClick={goPrev}>
-                    Anterior
-                  </Button>
-                  <Button type="submit" disabled={!allowWrite || sendPending || Boolean(validationMessage())}>
-                    {sendPending ? "Enviando…" : "Enviar a firmar"}
-                  </Button>
+                <div className="flex flex-col gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" variant="outline" onClick={goPrev}>
+                      Anterior
+                    </Button>
+                    <Button
+                      type="submit"
+                      className="disabled:pointer-events-none disabled:opacity-50"
+                      disabled={
+                        !allowWrite ||
+                        sendPending ||
+                        Boolean(validationMessage()) ||
+                        insufficientFoliosForSend
+                      }
+                    >
+                      {sendPending ? "Enviando…" : "Enviar a firmar"}
+                    </Button>
+                  </div>
+                  {insufficientFoliosForSend ? (
+                    <p className="text-xs text-red-600 dark:text-red-400">
+                      Saldo insuficiente: tienes {userFolioBalance} folios y este envío requiere {sendFolioCost}.{" "}
+                      <Link
+                        href="/folios/planes"
+                        className="font-medium text-primary underline-offset-4 hover:underline"
+                      >
+                        Comprar folios
+                      </Link>
+                    </p>
+                  ) : null}
                 </div>
                 <ActionErrorDetails failed={sendState != null && !sendState.ok} message={sendState?.message} />
               </form>

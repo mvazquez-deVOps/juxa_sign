@@ -569,27 +569,6 @@ export function memoryHomeDashboardCountsForOrg(organizationId: string) {
   };
 }
 
-/**
- * Si la organización no tiene clientes (p. ej. alta por /registro en memoria), crea uno de prueba para poder seguir el flujo.
- */
-export function memoryEnsureDemoCompaniesForOrg(organizationId: string) {
-  seed();
-  const hasAny = [...$m().companies.values()].some((c) => c.organizationId === organizationId);
-  if (hasAny) return;
-  const now = new Date();
-  const id = memCuid();
-  $m().companies.set(id, {
-    id,
-    digidIdClient: memoryNextDigidClient(),
-    razonSocial: "Cliente de prueba Juxa",
-    rfc: "JUX910101XXX",
-    email: "prueba@cliente.demo",
-    organizationId,
-    createdAt: now,
-    updatedAt: now,
-  });
-}
-
 export function memoryCompaniesForOrg(
   organizationId: string,
   orderBy: "createdAt" | "razonSocial",
@@ -1401,10 +1380,9 @@ export function memoryOrganizationFindBySlug(slug: string) {
   return null;
 }
 
-const SELF_SERVICE_TRIAL_DAYS = 30;
-const SELF_SERVICE_TRIAL_FOLIOS = 5;
+const SELF_SERVICE_WELCOME_FOLIOS = 1;
 
-/** Alta self-service: org + settings + admin + folios de prueba (memoria). */
+/** Alta self-service: org + settings + admin + folio de bienvenida (memoria). */
 export function memoryRegisterOrganizationWithAdmin(data: {
   name: string;
   slug: string;
@@ -1413,14 +1391,12 @@ export function memoryRegisterOrganizationWithAdmin(data: {
 }): { organizationId: string; userId: string } {
   seed();
   const now = new Date();
-  const trialEndsAt = new Date(now);
-  trialEndsAt.setDate(trialEndsAt.getDate() + SELF_SERVICE_TRIAL_DAYS);
   const orgId = memCuid();
   $m().organizations.set(orgId, {
     id: orgId,
     name: data.name.trim(),
     slug: data.slug.trim().toLowerCase(),
-    trialEndsAt,
+    trialEndsAt: null,
     createdAt: now,
     updatedAt: now,
   });
@@ -1440,14 +1416,13 @@ export function memoryRegisterOrganizationWithAdmin(data: {
   const g = memoryFolioGrant({
     userId: user.id,
     organizationId: orgId,
-    delta: SELF_SERVICE_TRIAL_FOLIOS,
+    delta: SELF_SERVICE_WELCOME_FOLIOS,
     reason: "TRIAL_GRANT",
     createdByUserId: null,
   });
   if (!g.ok) {
     throw new Error(g.message);
   }
-  memoryEnsureDemoCompaniesForOrg(orgId);
   return { organizationId: orgId, userId: user.id };
 }
 

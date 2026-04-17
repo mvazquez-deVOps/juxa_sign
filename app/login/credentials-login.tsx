@@ -88,7 +88,7 @@ export function CredentialsLoginForm() {
       <p className={cn("text-center text-xs", juxaLoginMutedClass)}>
         ¿Sin cuenta?{"    "}
         <Link href="/registro" className={juxaLoginLinkClass}>
-          Crear organización
+          Crear cuenta
         </Link>
       </p>
     </form>
