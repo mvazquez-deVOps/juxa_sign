@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { Building2, Plus } from "lucide-react";
 import { dbCompaniesFindManyByRazon, dbSignatoryFindManyByCompany } from "@/lib/data/repository";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { canMutate } from "@/lib/gate";
 import { requireOrgContext } from "@/lib/org-scope";
 import { FirmantesClient } from "./ui";
@@ -18,27 +20,38 @@ export default async function FirmantesPage({ searchParams }: Props) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Firmantes</h1>
-        <p className="text-muted-foreground">
-          Alta y edición de firmantes por cliente (empresa o persona física). Indica al menos correo o teléfono.
-        </p>
-      </div>
       {companies.length === 0 ? (
-        <div className="mx-auto max-w-md space-y-4 rounded-xl border bg-card p-8 text-center">
-          <p className="text-sm text-muted-foreground">
-            El orden del panel es: <strong className="text-foreground">Clientes</strong> →{" "}
-            <strong className="text-foreground">Firmantes</strong> → Documentos. Aquí aún no hay clientes en tu
-            organización.
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Si ya diste de alta uno, revisa <Link href="/empresas" className="text-primary underline">Clientes</Link> y
-            recarga esta página.
-          </p>
-          <Button asChild>
-            <Link href="/empresas/nueva">Registrar cliente en el proveedor</Link>
-          </Button>
-        </div>
+        <>
+          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight">Firmantes de la organización</h1>
+              <p className="text-muted-foreground">
+                Alta y edición de firmantes por cliente (empresa o persona física). Indica al menos correo o teléfono.
+              </p>
+            </div>
+            {allowWrite ? (
+              <Button asChild>
+                <Link href="/empresas/nueva">
+                  <Plus className="h-4 w-4" />
+                  Agregar cliente
+                </Link>
+              </Button>
+            ) : null}
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Listado de firmantes</CardTitle>
+            </CardHeader>
+            <CardContent>
+            <div className="flex flex-col items-center gap-4 py-12 text-center">
+              <p className="text-muted-foreground">
+                Registra un cliente y aquí podrás dar de alta a las personas que firman tus documentos.
+              </p>
+              </div>
+            </CardContent>
+          </Card>
+        </>
       ) : (
         <FirmantesClient
           canMutate={allowWrite}

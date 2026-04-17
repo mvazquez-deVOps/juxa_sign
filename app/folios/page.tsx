@@ -24,6 +24,7 @@ const reasonLabels: Record<string, string> = {
   SEND_PREMIUM: "Envío premium",
   ADMIN_TRANSFER: "Transferencia",
   ADJUSTMENT: "Ajuste",
+  TRIAL_GRANT: "Folio de bienvenida",
 };
 
 export default async function FoliosPage() {

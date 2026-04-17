@@ -1,6 +1,5 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { cn } from "@/lib/utils";
@@ -17,7 +16,6 @@ export function AppLayoutClient({
   panelReadOnlyNav,
   memoryDataStore,
   memoryDevSubtitle,
-  trialBanner,
 }: {
   children: React.ReactNode;
   demoLogout?: boolean;
@@ -32,7 +30,6 @@ export function AppLayoutClient({
   memoryDataStore: boolean;
   /** Subtítulo técnico “modo memoria” solo para rol SANDBOX. */
   memoryDevSubtitle?: boolean;
-  trialBanner?: ReactNode;
 }) {
   const pathname = usePathname() ?? "/";
   const bare =
@@ -64,7 +61,6 @@ export function AppLayoutClient({
           panelReadOnlyNav={panelReadOnlyNav}
           memoryDataStore={memoryDataStore}
           memoryDevSubtitle={memoryDevSubtitle}
-          trialBanner={trialBanner}
         >
           {children}
         </AppShell>

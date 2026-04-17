@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { AppLayoutClient } from "@/components/app-layout-client";
-import { TrialBanner } from "@/components/trial-banner";
-import { dbOrganizationTrialForOrg } from "@/lib/data/repository";
 import { isMemoryDataStore } from "@/lib/data/mode";
 import { isOrganizationAdmin, panelRoleLabel, showsPanelSandboxHints } from "@/lib/roles";
 import { DEMO_SYNTHETIC_USER_ID, resolveSession } from "@/lib/session";
@@ -42,15 +39,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const memoryDevSubtitle =
     memoryDataStore && role != null && showsPanelSandboxHints(role);
 
-  let trialBanner: ReactNode = null;
-  if (session?.user?.organizationId && !isDemoSynthetic) {
-    const orgTrial = await dbOrganizationTrialForOrg(session.user.organizationId);
-    if (orgTrial?.trialEndsAt) {
-      const expired = orgTrial.trialEndsAt.getTime() < Date.now();
-      trialBanner = <TrialBanner trialEndsAt={orgTrial.trialEndsAt} expired={expired} />;
-    }
-  }
-
   return (
     <html lang="es" suppressHydrationWarning>
       <body className={`${fontSans.variable} font-sans`}>
@@ -63,7 +51,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           panelReadOnlyNav={panelReadOnlyNav}
           memoryDataStore={memoryDataStore}
           memoryDevSubtitle={memoryDevSubtitle}
-          trialBanner={trialBanner}
         >
           {children}
         </AppLayoutClient>

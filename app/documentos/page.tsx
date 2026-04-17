@@ -33,8 +33,7 @@ export default async function DocumentosPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Listado</CardTitle>
-          <CardDescription>Identificador remoto del documento y enlace al archivo.</CardDescription>
+          <CardTitle>Listado de documentos</CardTitle>
         </CardHeader>
         <CardContent>
           {docs.length === 0 ? (

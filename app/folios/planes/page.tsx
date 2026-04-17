@@ -41,7 +41,7 @@ export default async function FoliosPlanesPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Catálogo de folios en venta</h1>
           <p className="text-sm text-muted-foreground">
-            Paquetes activos y precio de venta al público (no es tu cartera personal).
+            Paquetes activos y precio de venta al público.
           </p>
         </div>
 
@@ -125,7 +125,7 @@ export default async function FoliosPlanesPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Planes</h1>
         <p className="text-sm text-muted-foreground">
-          Conoce nuestros planes que tenemos para ti. 
+          Conoce nuestros planes que tenemos para ti.
         </p>
       </div>
 

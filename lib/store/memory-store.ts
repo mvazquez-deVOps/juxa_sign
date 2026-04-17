@@ -1380,10 +1380,9 @@ export function memoryOrganizationFindBySlug(slug: string) {
   return null;
 }
 
-const SELF_SERVICE_TRIAL_DAYS = 30;
-const SELF_SERVICE_TRIAL_FOLIOS = 5;
+const SELF_SERVICE_WELCOME_FOLIOS = 1;
 
-/** Alta self-service: org + settings + admin + folios de prueba (memoria). */
+/** Alta self-service: org + settings + admin + folio de bienvenida (memoria). */
 export function memoryRegisterOrganizationWithAdmin(data: {
   name: string;
   slug: string;
@@ -1392,14 +1391,12 @@ export function memoryRegisterOrganizationWithAdmin(data: {
 }): { organizationId: string; userId: string } {
   seed();
   const now = new Date();
-  const trialEndsAt = new Date(now);
-  trialEndsAt.setDate(trialEndsAt.getDate() + SELF_SERVICE_TRIAL_DAYS);
   const orgId = memCuid();
   $m().organizations.set(orgId, {
     id: orgId,
     name: data.name.trim(),
     slug: data.slug.trim().toLowerCase(),
-    trialEndsAt,
+    trialEndsAt: null,
     createdAt: now,
     updatedAt: now,
   });
@@ -1419,7 +1416,7 @@ export function memoryRegisterOrganizationWithAdmin(data: {
   const g = memoryFolioGrant({
     userId: user.id,
     organizationId: orgId,
-    delta: SELF_SERVICE_TRIAL_FOLIOS,
+    delta: SELF_SERVICE_WELCOME_FOLIOS,
     reason: "TRIAL_GRANT",
     createdByUserId: null,
   });

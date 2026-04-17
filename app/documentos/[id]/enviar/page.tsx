@@ -1,16 +1,22 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
-import { dbFindDocumentDetailInOrg, dbSignatoryFindManyByCompany } from "@/lib/data/repository";
+import { dbFindDocumentDetailInOrg, dbSignatoryFindManyByCompany, dbUserFolioBalance } from "@/lib/data/repository";
 import { canMutateSigningFlow } from "@/lib/gate";
+import { shouldSkipFolioDebitForUserId } from "@/lib/folio-enforcement";
 import { requireOrgContext } from "@/lib/org-scope";
+import { resolveSession } from "@/lib/session";
 import { EnviarClient } from "./enviar-client";
-import { Button } from "@/components/ui/button";
 
 type Props = { params: Promise<{ id: string }> };
 
 export default async function EnviarDocumentoPage({ params }: Props) {
   const { organizationId, role } = await requireOrgContext();
   const allowWrite = canMutateSigningFlow(role);
+  const session = await resolveSession();
+  const sessionUserId = session?.user?.id;
+  const enforceFolioBalanceCheck =
+    Boolean(sessionUserId) && !shouldSkipFolioDebitForUserId(sessionUserId);
+  const userFolioBalance =
+    sessionUserId != null ? await dbUserFolioBalance(sessionUserId) : 0;
   const { id } = await params;
   const doc = await dbFindDocumentDetailInOrg(id, organizationId);
   if (!doc) notFound();
@@ -42,6 +48,8 @@ export default async function EnviarDocumentoPage({ params }: Props) {
 
       <EnviarClient
         canMutate={allowWrite}
+        userFolioBalance={userFolioBalance}
+        enforceFolioBalanceCheck={enforceFolioBalanceCheck}
         documentId={doc.id}
         documentName={doc.nameDoc}
         documentCompanyId={doc.company.id}

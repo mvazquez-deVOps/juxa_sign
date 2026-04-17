@@ -85,8 +85,8 @@ import {
   memoryWebhookUpdate,
 } from "@/lib/store/memory-store";
 
-const SELF_SERVICE_TRIAL_DAYS = 30;
-const SELF_SERVICE_TRIAL_FOLIOS = 5;
+/** Folios de bienvenida al alta self-service (ledger TRIAL_GRANT). Sin `trialEndsAt`: el envío solo depende del saldo. */
+const SELF_SERVICE_WELCOME_FOLIOS = 1;
 
 export type ApiKeyAuthContext = {
   organizationId: string;
@@ -261,20 +261,6 @@ export async function dbOrganizationExists(organizationId: string): Promise<bool
   return n > 0;
 }
 
-export async function dbOrganizationTrialForOrg(organizationId: string) {
-  if (isMemoryDataStore()) {
-    const o = memoryOrganizationFindById(organizationId);
-    if (!o) return null;
-    return { trialEndsAt: o.trialEndsAt };
-  }
-  const p = prisma;
-  const o = await p.organization.findUnique({
-    where: { id: organizationId },
-    select: { trialEndsAt: true },
-  });
-  return o;
-}
-
 export async function dbRegisterSelfServiceOrganization(data: {
   name: string;
   slug: string;
@@ -306,16 +292,12 @@ export async function dbRegisterSelfServiceOrganization(data: {
   const dupEmail = await p.user.findUnique({ where: { email }, select: { id: true } });
   if (dupEmail) return { ok: false, message: "Ese correo ya está registrado." };
 
-  const trialEndsAt = new Date();
-  trialEndsAt.setDate(trialEndsAt.getDate() + SELF_SERVICE_TRIAL_DAYS);
-
   try {
     await p.$transaction(async (tx) => {
       const org = await tx.organization.create({
         data: {
           name: data.name.trim(),
           slug,
-          trialEndsAt,
         },
       });
       await tx.organizationSettings.create({
@@ -333,19 +315,15 @@ export async function dbRegisterSelfServiceOrganization(data: {
           passwordHash: data.passwordHash,
           role: "ADMIN",
           organizationId: org.id,
-          folioBalance: 0,
+          folioBalance: SELF_SERVICE_WELCOME_FOLIOS,
         },
-      });
-      await tx.user.update({
-        where: { id: user.id },
-        data: { folioBalance: SELF_SERVICE_TRIAL_FOLIOS },
       });
       await tx.folioLedgerEntry.create({
         data: {
           userId: user.id,
           organizationId: org.id,
-          delta: SELF_SERVICE_TRIAL_FOLIOS,
-          balanceAfter: SELF_SERVICE_TRIAL_FOLIOS,
+          delta: SELF_SERVICE_WELCOME_FOLIOS,
+          balanceAfter: SELF_SERVICE_WELCOME_FOLIOS,
           reason: "TRIAL_GRANT",
           refType: null,
           refId: null,

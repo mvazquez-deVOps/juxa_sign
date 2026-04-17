@@ -18,7 +18,7 @@ export default async function EmpresasPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Clientes</h1>
           <p className="text-muted-foreground">
-            Empresas y personas físicas registradas en el proveedor, sincronizadas en Juxa Sign.
+            Empresas y personas físicas registradas en Juxa Sign.
           </p>
         </div>
         {allowWrite ? (
@@ -38,17 +38,7 @@ export default async function EmpresasPage() {
         <CardContent>
           {companies.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
-              <p className="text-muted-foreground">Aún no hay clientes registrados. Consulta Ayuda → Primeros pasos.</p>
-              <div className="flex flex-wrap justify-center gap-2">
-                {allowWrite ? (
-                  <Button asChild>
-                    <Link href="/empresas/nueva">Registrar cliente</Link>
-                  </Button>
-                ) : null}
-                <Button variant="outline" asChild>
-                  <Link href="/prueba-e2e">Guía de prueba</Link>
-                </Button>
-              </div>
+              <p className="text-muted-foreground">Aún no hay clientes registrados. Registra uno ahora para empezar a usar Juxa Sign.</p>
             </div>
           ) : (
             <EmpresasDataTable

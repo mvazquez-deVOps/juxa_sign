@@ -87,7 +87,7 @@ export function RegistroForm() {
       ) : null}
       <div className="space-y-2">
         <Label htmlFor="organizationName" className={juxaLoginLabelClass}>
-          Nombre de la organización
+          Nombre de la cuenta
         </Label>
         <Input
           id="organizationName"
@@ -97,7 +97,7 @@ export function RegistroForm() {
           value={orgName}
           onChange={(e) => setOrgName(e.target.value)}
           onBlur={onOrgNameBlur}
-          placeholder="Ej. Mi empresa S.A."
+          placeholder="Persona Física o Moral"
           className={cn("h-11 rounded-xl", juxaLoginInputClass)}
         />
       </div>
@@ -114,7 +114,7 @@ export function RegistroForm() {
             setSlugTouched(true);
             setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""));
           }}
-          placeholder="mi-empresa"
+          placeholder="nueva-cuenta"
           className={cn("h-11 rounded-xl", juxaLoginInputClass)}
         />
         <p className={cn("text-xs", juxaLoginMutedClass)}>
@@ -169,12 +169,11 @@ export function RegistroForm() {
         />
       </div>
       <p className={cn("rounded-lg border border-white/10 bg-white/5 p-3 text-xs", juxaLoginMutedClass)}>
-        Al registrarte obtienes <strong className="text-zinc-200">30 días de prueba</strong> y{" "}
-        <strong className="text-zinc-200">5 folios gratis</strong> en tu cartera para envíos estándar. Sin tarjeta en
-        este paso.
+        <strong className="text-zinc-200">Incluye 1 folio de prueba gratis</strong> en tu cartera para un envío
+        estándar.
       </p>
       <Button type="submit" className={juxaLoginPrimaryButtonClass} disabled={pending}>
-        {pending ? "Creando cuenta…" : "Crear organización y entrar"}
+        {pending ? "Creando cuenta…" : "Crear cuenta y entrar"}
       </Button>
       <p className={cn("text-center text-xs", juxaLoginMutedClass)}>
         ¿Ya tienes cuenta?{" "}

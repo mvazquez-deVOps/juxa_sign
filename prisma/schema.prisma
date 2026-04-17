@@ -34,7 +34,7 @@ model Organization {
   id        String    @id @default(cuid())
   name      String
   slug      String    @unique
-  /// Fin del periodo de prueba (30 días desde el registro self-service); informativo para marketing y UI.
+  /// Opcional / legado: fecha de “prueba” para UI; el alta self-service ya no la rellena. Envíos según saldo de folios.
   trialEndsAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
