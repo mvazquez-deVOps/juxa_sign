@@ -14,7 +14,7 @@ export default async function EnviarDocumentoPage({ params }: Props) {
   const session = await resolveSession();
   const sessionUserId = session?.user?.id;
   const enforceFolioBalanceCheck =
-    Boolean(sessionUserId) && !shouldSkipFolioDebitForUserId(sessionUserId);
+    sessionUserId != null && !shouldSkipFolioDebitForUserId(sessionUserId);
   const userFolioBalance =
     sessionUserId != null ? await dbUserFolioBalance(sessionUserId) : 0;
   const { id } = await params;
