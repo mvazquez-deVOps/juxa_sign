@@ -1,4 +1,5 @@
-import { auth } from "@/auth";
+import NextAuth from "next-auth";
+import { authConfig } from "@/auth.config";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { DEMO_SESSION_COOKIE, verifyDemoSessionValue } from "@/lib/demo-auth-verify";
@@ -97,7 +98,9 @@ async function demoPasswordGate(request: NextRequest): Promise<NextResponse> {
   return NextResponse.next();
 }
 
-const withNextAuth = auth((req) => {
+const { auth: edgeAuth } = NextAuth(authConfig);
+
+const withNextAuth = edgeAuth((req) => {
   const path = req.nextUrl.pathname;
   const isLogin = path === "/login" || path.startsWith("/login/");
   const isRegister = path === "/registro" || path.startsWith("/registro/");

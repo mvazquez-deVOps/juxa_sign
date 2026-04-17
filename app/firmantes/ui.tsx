@@ -219,7 +219,7 @@ export function FirmantesClient({
         <DialogHeader>
           <DialogTitle>{edit ? "Editar firmante" : "Nuevo firmante"}</DialogTitle>
           <DialogDescription>
-            El proveedor no duplica por correo/teléfono dentro del mismo Id. de cliente; puede devolver el existente.
+            Registra a las personas que firmarán el documento para <span className="text-foreground">{selectedRazon}</span>.
           </DialogDescription>
         </DialogHeader>
         <form action={formAction} className="space-y-4">
