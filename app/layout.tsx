@@ -14,7 +14,7 @@ const fontSans = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: { default: "Juxa Sign", template: "%s | Juxa Sign" },
   description: "Gestión de firmas electrónicas para equipos en México.",
-  icons: { icon: "/favicon.svg" },
+  icons: { icon: "/JUXA01.png" },
 };
 
 /** Evita que `next build` ejecute Prisma contra DB inexistente durante el prerender estático. */

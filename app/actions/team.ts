@@ -18,7 +18,13 @@ import {
   dbUserCreateFromInvite,
   dbUserFindByEmailGlobal,
 } from "@/lib/data/repository";
-import { sendTeamInviteEmail } from "@/lib/mail/send-transactional";
+import { sendTransactionalEmail } from "@/lib/mail/send-transactional";
+import type { SendEmailResult } from "@/lib/mail/types";
+import {
+  buildTeamInviteEmailHtml,
+  buildTeamInviteEmailSubject,
+  buildTeamInviteEmailText,
+} from "@/lib/mail/templates/team-invite";
 import { generateRawInviteToken, hashInviteToken } from "@/lib/invite-token";
 import { requireOrgContext } from "@/lib/org-scope";
 import { isOrganizationAdmin, panelRoleLabel } from "@/lib/roles";
@@ -112,9 +118,11 @@ export async function createOrganizationInvite(
   });
 
   revalidatePath("/configuracion/equipo");
-  const inviteUrl = `${inviteBaseUrl()}/invitacion/${plain}`;
+  const baseUrl = inviteBaseUrl();
+  const inviteUrl = `${baseUrl}/invitacion/${plain}`;
+  const resendReady = Boolean(process.env.RESEND_API_KEY?.trim());
   const provider = (process.env.MAIL_PROVIDER || "none").trim().toLowerCase();
-  const mailConfigured = provider === "resend" || provider === "smtp";
+  const mailConfigured = resendReady || provider === "resend" || provider === "smtp";
 
   if (!mailConfigured) {
     return {
@@ -122,18 +130,43 @@ export async function createOrganizationInvite(
       inviteUrl,
       inviteEmailSent: false,
       message:
-        "Invitación creada. Copia el enlace y compártelo por un canal seguro. Con MAIL_PROVIDER=resend (o smtp) el invitado también recibe el enlace por correo.",
+        "Invitación creada. Copia el enlace y compártelo por un canal seguro. Con RESEND_API_KEY o MAIL_PROVIDER=resend/smtp el invitado también recibe el enlace por correo.",
     };
   }
 
   const orgLabel = await dbOrganizationInviteEmailLabel(admin.organizationId);
   const roleLabel = panelRoleLabel(parsed.data.role as UserRole);
-  const mailRes = await sendTeamInviteEmail({
-    to: email,
-    inviteUrl,
-    organizationLabel: orgLabel,
+
+  const baseNorm = baseUrl.replace(/\/$/, "");
+  const html = buildTeamInviteEmailHtml({
+    organizationName: orgLabel,
+    token: plain,
+    baseUrl: baseNorm,
+  });
+  const text = buildTeamInviteEmailText({
+    organizationName: orgLabel,
+    token: plain,
+    baseUrl: baseNorm,
     roleLabel,
   });
+  const subject = buildTeamInviteEmailSubject(orgLabel);
+
+  let mailRes: SendEmailResult;
+  try {
+    mailRes = await sendTransactionalEmail({
+      to: email,
+      subject,
+      text,
+      html,
+    });
+  } catch (e) {
+    console.error("[team:createOrganizationInvite] envío de correo:", e);
+    mailRes = { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+
+  if (!mailRes.ok) {
+    console.error("[team:createOrganizationInvite] proveedor de correo:", mailRes.error);
+  }
 
   if (mailRes.ok) {
     return {

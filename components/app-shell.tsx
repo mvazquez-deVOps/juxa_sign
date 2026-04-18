@@ -88,7 +88,7 @@ export function AppShell({
               alt="Juxa Sign"
               width={320}
               height={72}
-              className="h-9 w-auto shrink-0"
+              className="h-12 w-auto shrink-0"
               priority
             />
             <div className="min-w-0 flex-1">
@@ -136,7 +136,7 @@ export function AppShell({
                 alt="Juxa Sign"
                 width={320}
                 height={72}
-                className="h-8 w-auto shrink-0"
+                className="h-10 w-auto shrink-0"
                 priority
               />
               <span className="min-w-0 truncate font-semibold">Juxa Sign</span>
