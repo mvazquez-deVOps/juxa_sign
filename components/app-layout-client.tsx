@@ -28,7 +28,7 @@ export function AppLayoutClient({
   panelReadOnlyNav?: boolean;
   /** Desde el servidor: JUXA_DATA_STORE no existe en el cliente. */
   memoryDataStore: boolean;
-  /** Subtítulo técnico “modo memoria” solo para rol SANDBOX. */
+  /** Subtítulo técnico “modo memoria” cuando `JUXA_DATA_STORE=memory`. */
   memoryDevSubtitle?: boolean;
 }) {
   const pathname = usePathname() ?? "/";

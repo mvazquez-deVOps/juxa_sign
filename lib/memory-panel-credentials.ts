@@ -1,5 +1,5 @@
 /**
- * Credenciales sembradas en memoria (ADMIN + OPERATOR) para login de prueba.
+ * Credenciales sembradas en memoria (ADMIN + usuario operativo) para login de prueba.
  * Misma fuente para la semilla (memory-store) y el aviso de login en desarrollo.
  */
 export function getMemoryPanelUserEmail(): string {
@@ -13,7 +13,7 @@ export function getMemoryPanelUserPasswordPlain(): string {
 
 const OPERATOR_EMAIL_FALLBACKS = ["operador@juxa.local", "usuario@juxa.local", "equipo@juxa.local"] as const;
 
-/** Operador: envíos, documentos y acciones que consumen folios (rol OPERATOR en Prisma). */
+/** Usuario operativo (envíos, documentos, folios); rol USER en Prisma. */
 export function getMemoryOperatorUserEmail(): string {
   const panel = getMemoryPanelUserEmail();
   const raw = process.env.JUXA_MEMORY_OPERATOR_EMAIL?.trim().toLowerCase();
@@ -27,7 +27,7 @@ export function getMemoryOperatorUserPasswordPlain(): string {
   return process.env.JUXA_MEMORY_OPERATOR_PASSWORD?.trim() || "operador1234";
 }
 
-/** Visor · potencial consumidor: mismo tenant que ADMIN/OPERATOR; rol VIEWER (consulta + catálogo comercial). */
+/** Visor · potencial consumidor: mismo tenant que ADMIN/usuario operativo; rol VIEWER. */
 export function getMemoryViewerUserEmail(): string {
   const panel = getMemoryPanelUserEmail();
   const op = getMemoryOperatorUserEmail();
@@ -43,7 +43,7 @@ export function getMemoryViewerUserPasswordPlain(): string {
   return process.env.JUXA_MEMORY_VIEWER_PASSWORD?.trim() || "observador1234";
 }
 
-/** Cuenta SANDBOX: mismos permisos que operador + checklist sandbox y atajos E2E en inicio. */
+/** Segunda cuenta USER para pruebas (mismas credenciales env opcionales JUXA_MEMORY_SANDBOX_*). */
 export function getMemorySandboxUserEmail(): string {
   const panel = getMemoryPanelUserEmail();
   const op = getMemoryOperatorUserEmail();

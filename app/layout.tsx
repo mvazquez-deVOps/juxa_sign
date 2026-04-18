@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { AppLayoutClient } from "@/components/app-layout-client";
 import { isMemoryDataStore } from "@/lib/data/mode";
-import { isOrganizationAdmin, panelRoleLabel, showsPanelSandboxHints } from "@/lib/roles";
+import { isOrganizationAdmin, panelRoleLabel } from "@/lib/roles";
 import { DEMO_SYNTHETIC_USER_ID, resolveSession } from "@/lib/session";
 import "./globals.css";
 
@@ -14,7 +14,7 @@ const fontSans = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: { default: "Juxa Sign", template: "%s | Juxa Sign" },
   description: "Gestión de firmas electrónicas para equipos en México.",
-  icons: { icon: "/favicon.svg" },
+  icons: { icon: "/JUXA01.png" },
 };
 
 /** Evita que `next build` ejecute Prisma contra DB inexistente durante el prerender estático. */
@@ -36,8 +36,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const consumerFolioNav = role === "USER";
   const panelReadOnlyNav = role === "VIEWER";
   const memoryDataStore = isMemoryDataStore();
-  const memoryDevSubtitle =
-    memoryDataStore && role != null && showsPanelSandboxHints(role);
+  /** En modo memoria, subtítulo técnico en el shell para cualquier sesión autenticada. */
+  const memoryDevSubtitle = memoryDataStore && role != null;
 
   return (
     <html lang="es" suppressHydrationWarning>

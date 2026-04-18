@@ -1,12 +1,14 @@
 import "server-only";
 
 import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import type { SendEmailResult, TransactionalEmailInput } from "@/lib/mail/types";
 
 function mailRequired(): boolean {
   return process.env.JUXA_MAIL_REQUIRED === "1" || process.env.MAIL_REQUIRED === "1";
 }
 
+/** Remitente por defecto (Resend onboarding o dominio verificado vía MAIL_FROM). */
 function defaultFrom(): string {
   return (
     process.env.MAIL_FROM?.trim() ||
@@ -36,26 +38,27 @@ async function sendViaResend(input: TransactionalEmailInput): Promise<SendEmailR
   const to = Array.isArray(input.to) ? input.to : [input.to];
   const from = input.from?.trim() || defaultFrom();
 
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
+  const resend = new Resend(key);
+
+  try {
+    const { error } = await resend.emails.send({
       from,
       to,
       subject: input.subject,
       text: input.text,
       ...(input.html ? { html: input.html } : {}),
-    }),
-  });
-
-  if (!res.ok) {
-    const body = await res.text();
-    return { ok: false, error: `Resend ${res.status}: ${body.slice(0, 500)}` };
+    });
+    if (error) {
+      const msg = "message" in error && typeof error.message === "string" ? error.message : JSON.stringify(error);
+      console.error("[mail:resend]", msg);
+      return { ok: false, error: msg };
+    }
+    return { ok: true };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[mail:resend]", msg);
+    return { ok: false, error: msg };
   }
-  return { ok: true };
 }
 
 async function sendViaSmtp(input: TransactionalEmailInput): Promise<SendEmailResult> {
@@ -91,7 +94,7 @@ async function sendViaSmtp(input: TransactionalEmailInput): Promise<SendEmailRes
       to,
       subject: input.subject,
       text: input.text,
-      html: input.html,
+      ...(input.html ? { html: input.html } : {}),
     });
     return { ok: true };
   } catch (e) {
@@ -101,13 +104,14 @@ async function sendViaSmtp(input: TransactionalEmailInput): Promise<SendEmailRes
 }
 
 /**
- * Envía correo transaccional según MAIL_PROVIDER: resend | smtp | none.
- * Sin proveedor configurado: en desarrollo registra en consola; en producción no-op salvo JUXA_MAIL_REQUIRED=1.
+ * Envía correo transaccional: con `RESEND_API_KEY` usa la API de Resend;
+ * si `MAIL_PROVIDER=smtp` (sin clave Resend) usa SMTP; `MAIL_PROVIDER=resend` fuerza Resend (requiere clave).
  */
 export async function sendTransactionalEmail(input: TransactionalEmailInput): Promise<SendEmailResult> {
+  const resendKey = process.env.RESEND_API_KEY?.trim();
   const provider = (process.env.MAIL_PROVIDER || "none").trim().toLowerCase();
 
-  if (provider === "resend") {
+  if (resendKey || provider === "resend") {
     return sendViaResend(input);
   }
   if (provider === "smtp") {
@@ -180,30 +184,6 @@ export async function sendSigningFlowNotification(input: {
   return sendTransactionalEmail({
     to: input.to,
     subject: `Juxa Sign — ${input.documentName}: envío a firma`,
-    text,
-  });
-}
-
-/** Invitación al equipo del panel (aceptación en /invitacion/[token]). */
-export async function sendTeamInviteEmail(input: {
-  to: string;
-  inviteUrl: string;
-  organizationLabel: string;
-  roleLabel: string;
-}): Promise<SendEmailResult> {
-  const text = [
-    `Te invitaron al panel de ${input.organizationLabel} en Juxa Sign.`,
-    `Rol asignado: ${input.roleLabel}.`,
-    "",
-    "Abre el enlace para elegir tu contraseña y entrar (caduca en 7 días):",
-    input.inviteUrl,
-    "",
-    "Si no esperabas este correo, ignóralo.",
-  ].join("\n");
-
-  return sendTransactionalEmail({
-    to: input.to,
-    subject: `Invitación a Juxa Sign — ${input.organizationLabel}`,
     text,
   });
 }

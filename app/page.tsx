@@ -5,18 +5,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { HomeHero } from "@/components/home-hero";
 import { requireOrgContext } from "@/lib/org-scope";
 import { PotentialConsumerCallout } from "@/components/potential-consumer-callout";
-import { showsPanelSandboxHints } from "@/lib/roles";
+import { isMemoryDataStore } from "@/lib/data/mode";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const { role } = await requireOrgContext();
-  const sandboxHome = showsPanelSandboxHints(role);
+  const showMemoryShortcuts = isMemoryDataStore();
 
   return (
     <div className="space-y-10">
       <PotentialConsumerCallout variant="home" />
-      <HomeHero showSandboxShortcuts={sandboxHome} />
+      <HomeHero showSandboxShortcuts={showMemoryShortcuts} />
 
       {/* Tarjetas de acceso rápido */}
       <div className="grid gap-4 md:grid-cols-3">

@@ -26,7 +26,7 @@ Orden sugerido para probar de punta a punta. El rol **SUPERADMIN** gestiona la p
 
 En el código actual **no hay un formulario en `/superadmin` que cree usuarios con contraseña**. Puedes dar de alta cuentas así:
 
-1. **Semilla (recomendado para el primer ciclo):** en `.env` configura **`ADMIN_EMAIL`** / **`ADMIN_PASSWORD`** y, si quieres otro operador, **`OPERATOR_EMAIL`** / **`OPERATOR_PASSWORD`**. Ejecuta **`npm run db:seed`**. Esos usuarios quedan en la organización `default` y el seed les asigna **folios iniciales** (`folioBalance`).
+1. **Semilla (recomendado para el primer ciclo):** en `.env` configura **`ADMIN_EMAIL`** / **`ADMIN_PASSWORD`** y, si quieres un usuario operativo adicional, **`OPERATOR_EMAIL`** / **`OPERATOR_PASSWORD`** (queda con rol **USER**). Ejecuta **`npm run db:seed`**. Esos usuarios quedan en la organización `default` y el seed les asigna **folios iniciales** (`folioBalance`).
 2. **Invitación (nuevos miembros):** inicia sesión como **ADMIN** de la organización (o un SUPERADMIN que use el panel de esa misma org), ve a **Configuración → Equipo**, crea una **invitación** (correo + rol). El invitado abre el enlace, define contraseña y ya aparece en el listado. Si el nuevo usuario arranca con **0 folios**, sigue el paso C.
 
 ### C. Asignar folios con SUPERADMIN (consumo en envíos)
@@ -40,7 +40,7 @@ Comprueba en **Mis folios** (`/folios`) con la cuenta del operador que el saldo 
 
 ### D. Flujo de firma del contrato (usuario que envía)
 
-1. Cierra sesión e inicia con el usuario que hará el trabajo operativo (**ADMIN**, **OPERATOR** o **USER** con permisos y folios).
+1. Cierra sesión e inicia con el usuario que hará el trabajo operativo (**ADMIN** o **USER** con permisos y folios).
 2. Ejecuta la tabla **Flujo en la aplicación (documento y firma)** de la siguiente sección en orden (empresa → firmantes → PDF → marcas → enviar → URLs → firma en DIGID).
 
 ---
