@@ -48,6 +48,7 @@ async function main() {
         role: "ADMIN",
         organizationId: org.id,
         folioBalance: 1000,
+        kycBalance: 500,
       },
       update: {
         passwordHash,
@@ -73,6 +74,7 @@ async function main() {
           role: "USER",
           organizationId: org.id,
           folioBalance: 1000,
+          kycBalance: 500,
         },
         update: {
           passwordHash: opHash,
@@ -111,6 +113,7 @@ async function main() {
           role: "USER",
           organizationId: org.id,
           folioBalance: 1000,
+          kycBalance: 500,
         },
         update: {
           passwordHash: sandboxHash,
@@ -137,6 +140,7 @@ async function main() {
         passwordHash: superHash,
         role: "SUPERADMIN",
         organizationId: org.id,
+        kycBalance: 0,
       },
       update: {
         passwordHash: superHash,
@@ -163,6 +167,7 @@ async function main() {
         role: "USER",
         organizationId: org.id,
         folioBalance: 100,
+        kycBalance: 50,
       },
       update: {
         passwordHash: uh,
@@ -187,6 +192,7 @@ async function main() {
         role: "VIEWER",
         organizationId: org.id,
         folioBalance: 0,
+        kycBalance: 0,
       },
       update: {
         passwordHash: vh,

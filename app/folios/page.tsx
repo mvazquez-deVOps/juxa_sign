@@ -25,6 +25,7 @@ const reasonLabels: Record<string, string> = {
   ADMIN_TRANSFER: "Transferencia",
   ADJUSTMENT: "Ajuste",
   TRIAL_GRANT: "Folio de bienvenida",
+  KYC_VALIDATION: "Validación KYC",
 };
 
 export default async function FoliosPage() {

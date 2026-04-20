@@ -29,6 +29,7 @@ const reasonLabels: Record<string, string> = {
   ADMIN_TRANSFER: "Transferencia",
   ADJUSTMENT: "Ajuste",
   TRIAL_GRANT: "Regalo de prueba (alta org.)",
+  KYC_VALIDATION: "Validación KYC",
 };
 
 function priceStr(v: unknown) {

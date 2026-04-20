@@ -8,10 +8,12 @@ import {
   dbDocumentFindFirstInOrgWithCompany,
   dbDocumentFindFirstWithPlacementsAndSignatories,
   dbDocumentFindFirstInOrgSelectId,
+  dbDocumentCancelWithLedgerRefunds,
   dbDocumentSignatoryReplace,
   dbDocumentTouchLastStatusSync,
   dbDocumentUpdateStatus,
   dbDocumentsFindManyForSync,
+  dbLedgerDocumentSendAndKycDebitAggregates,
   dbFindDocumentDetailInOrg,
   dbPlacementCreate,
   dbPlacementDeleteById,
@@ -21,11 +23,13 @@ import {
 } from "@/lib/data/repository";
 import {
   buildSignatureCoordinatesJson,
+  cancelarDocumento,
   crearDocumentoMultipart,
   infoDocumento,
   type SignatureCoordinate,
 } from "@/lib/digid";
 import { digidUserMessage } from "@/lib/digid-user-message";
+import { isDocumentCancelBlocked } from "@/lib/document-cancel-policy";
 import {
   gateDocumentStatusSync,
   gateMutation,
@@ -353,4 +357,69 @@ export async function buildCoordinatesForDocument(documentId: string): Promise<s
   const g = await gateMutation();
   if (!g.ok) return null;
   return buildCoordinatesForDocumentInOrg(documentId, g.session.user.organizationId);
+}
+
+const documentIdSchema = z.string().cuid();
+
+/**
+ * Cancela el documento en DIGID si hubo envío cobrado en folios, marca `CANCELED` y reembolsa folios/KYC según el ledger.
+ */
+export async function cancelDocumentAction(
+  documentId: string,
+): Promise<{ ok: boolean; message?: string }> {
+  const g = await gateMutation();
+  if (!g.ok) return { ok: false, message: g.message };
+  const orgId = g.session.user.organizationId;
+  const actingUserId = g.session.user.id;
+
+  const parsed = documentIdSchema.safeParse(documentId);
+  if (!parsed.success) {
+    return { ok: false, message: "Identificador de documento inválido." };
+  }
+
+  const doc = await dbDocumentFindFirstInOrgWithCompany(parsed.data, orgId);
+  if (!doc) {
+    return { ok: false, message: "Documento no encontrado." };
+  }
+
+  if (isDocumentCancelBlocked(doc.status)) {
+    return { ok: false, message: "Este documento ya está completado o cancelado." };
+  }
+
+  const { folio: folioRefunds, kyc: kycRefunds } = await dbLedgerDocumentSendAndKycDebitAggregates(
+    parsed.data,
+    orgId,
+  );
+  const hadSendDebit = folioRefunds.some((r) => r.credits > 0);
+
+  if (hadSendDebit) {
+    try {
+      const digid = await cancelarDocumento({
+        IdCliente: doc.company.digidIdClient,
+        IdDocumento: doc.digidDocumentId,
+      });
+      if (!digid.ok) {
+        return { ok: false, message: digid.message };
+      }
+    } catch (e) {
+      return { ok: false, message: digidUserMessage(e, "No se pudo cancelar el documento en el proveedor.") };
+    }
+  }
+
+  const persist = await dbDocumentCancelWithLedgerRefunds({
+    documentId: parsed.data,
+    organizationId: orgId,
+    folioRefunds,
+    kycRefunds,
+    createdByUserId: actingUserId ?? null,
+  });
+  if (!persist.ok) {
+    return { ok: false, message: persist.message };
+  }
+
+  revalidatePath("/envios");
+  revalidatePath("/documentos");
+  revalidatePath(`/documentos/${parsed.data}`);
+  revalidatePath(`/documentos/${parsed.data}/enviar`);
+  return { ok: true, message: "Documento cancelado. Se reembolsaron los créditos aplicables." };
 }
