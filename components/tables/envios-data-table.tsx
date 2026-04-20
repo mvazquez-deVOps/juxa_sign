@@ -11,11 +11,25 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import * as React from "react";
+import { Ban, Link2 } from "lucide-react";
+import { toast } from "sonner";
+import { cancelDocumentAction } from "@/app/actions/document";
+import { getBulkSignerUrls } from "@/app/actions/signing";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SortableTableHead } from "@/components/tables/sortable-header";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
+import { isDocumentCancelBlocked } from "@/lib/document-cancel-policy";
 
 export type EnvioRow = {
   id: string;
@@ -26,6 +40,87 @@ export type EnvioRow = {
   lastStatusSyncAt: string | null;
   updatedAt: string;
 };
+
+function EnviosRowActions({ row }: { row: EnvioRow }) {
+  const [open, setOpen] = React.useState(false);
+  const [copyPending, startCopy] = React.useTransition();
+  const [cancelPending, startCancel] = React.useTransition();
+  const cancelBlocked = isDocumentCancelBlocked(row.status);
+
+  function copyPublicSignerUrl() {
+    startCopy(async () => {
+      const r = await getBulkSignerUrls(row.id);
+      if (!r.ok || r.urls.length === 0 || !r.urls[0]?.url) {
+        toast.error(r.ok ? "No hay URL de firma disponible aún." : (r.message ?? "No se pudo obtener el enlace."));
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(r.urls[0].url);
+        toast.success("Enlace copiado");
+      } catch {
+        toast.error("No se pudo copiar al portapapeles.");
+      }
+    });
+  }
+
+  function confirmCancel() {
+    startCancel(async () => {
+      const r = await cancelDocumentAction(row.id);
+      if (r.ok) {
+        toast.success(r.message ?? "Documento cancelado.");
+        setOpen(false);
+      } else {
+        toast.error(r.message ?? "No se pudo cancelar.");
+      }
+    });
+  }
+
+  return (
+    <div className="flex justify-start gap-1">
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className="h-8 w-8"
+        title="Copiar enlace de firma"
+        disabled={copyPending}
+        onClick={() => copyPublicSignerUrl()}
+      >
+        <Link2 className="h-4 w-4" />
+        <span className="sr-only">Copiar enlace</span>
+      </Button>
+
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <Button
+          type="button"
+          variant="destructive"
+          size="icon"
+          className="h-8 w-8"
+          title="Cancelar documento"
+          disabled={cancelBlocked || cancelPending}
+          onClick={() => setOpen(true)}
+        >
+          <Ban className="h-4 w-4" />
+          <span className="sr-only">Cancelar</span>
+        </Button>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro de cancelar este documento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción es irreversible. Se te reembolsarán los créditos utilizados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cancelPending}>Volver</AlertDialogCancel>
+            <Button variant="destructive" disabled={cancelPending} onClick={() => confirmCancel()}>
+              {cancelPending ? "Procesando…" : "Sí, cancelar"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
 
 export function EnviosDataTable({
   data,
@@ -104,11 +199,11 @@ export function EnviosDataTable({
       },
       {
         id: "actions",
-        header: () => <span className="text-right">Acciones</span>,
+        header: () => <span>Acciones</span>,
         enableSorting: false,
         cell: ({ row }) => (
-          <div className="text-right">
-            <Button variant="link" className="h-auto p-0" asChild>
+          <div className="flex flex-wrap items-center justify-start gap-3">
+            <Button variant="link" className="h-auto px-0 text-xs" asChild>
               <Link
                 href={
                   showEnviarLink
@@ -116,9 +211,10 @@ export function EnviosDataTable({
                     : `/documentos/${row.original.id}`
                 }
               >
-                {showEnviarLink ? "Enviar / URLs" : "Detalle"}
+                {showEnviarLink ? "Panel envío" : "Detalle"}
               </Link>
             </Button>
+            <EnviosRowActions row={row.original} />
           </div>
         ),
       },
@@ -146,7 +242,7 @@ export function EnviosDataTable({
           {table.getHeaderGroups().map((hg) => (
             <TableRow key={hg.id}>
               {hg.headers.map((h) => (
-                <SortableTableHead key={h.id} header={h} alignRight={h.column.id === "actions"} />
+                <SortableTableHead key={h.id} header={h} />
               ))}
             </TableRow>
           ))}

@@ -31,6 +31,7 @@ const REASON_LABEL: Record<string, string> = {
   ADMIN_TRANSFER: "Transferencia admin",
   ADJUSTMENT: "Ajuste",
   TRIAL_GRANT: "Regalo de prueba",
+  KYC_VALIDATION: "Validación KYC",
 };
 
 export default async function SuperadminUsoPage() {

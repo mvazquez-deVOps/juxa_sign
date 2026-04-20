@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import type { FolioLedgerReason, UserRole } from "@prisma/client";
+import { FolioLedgerReason, type UserRole } from "@prisma/client";
 import { appBaseUrl } from "@/lib/app-base-url";
 import { evaluateSendReadinessFromEnviarShape } from "@/lib/send-readiness-eval";
 import {
@@ -38,6 +38,7 @@ export type MemoryUser = {
   role: UserRole;
   organizationId: string;
   folioBalance: number;
+  kycBalance: number;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -286,6 +287,7 @@ function seed() {
     role: "ADMIN",
     organizationId: orgId,
     folioBalance: 1000,
+    kycBalance: 500,
     createdAt: now,
     updatedAt: now,
   };
@@ -303,6 +305,7 @@ function seed() {
     role: "USER",
     organizationId: orgId,
     folioBalance: 1000,
+    kycBalance: 500,
     createdAt: now,
     updatedAt: now,
   };
@@ -320,6 +323,7 @@ function seed() {
     role: "VIEWER",
     organizationId: orgId,
     folioBalance: 0,
+    kycBalance: 0,
     createdAt: now,
     updatedAt: now,
   };
@@ -337,6 +341,7 @@ function seed() {
     role: "USER",
     organizationId: orgId,
     folioBalance: 1000,
+    kycBalance: 500,
     createdAt: now,
     updatedAt: now,
   };
@@ -354,6 +359,7 @@ function seed() {
       role: "SUPERADMIN",
       organizationId: orgId,
       folioBalance: 0,
+      kycBalance: 0,
       createdAt: now,
       updatedAt: now,
     };
@@ -1384,6 +1390,7 @@ export function memoryUserCreate(data: {
   role: UserRole;
   organizationId: string;
   folioBalance?: number;
+  kycBalance?: number;
 }): MemoryUser {
   seed();
   const now = new Date();
@@ -1394,6 +1401,7 @@ export function memoryUserCreate(data: {
     role: data.role,
     organizationId: data.organizationId,
     folioBalance: data.folioBalance ?? 0,
+    kycBalance: data.kycBalance ?? 0,
     createdAt: now,
     updatedAt: now,
   };
@@ -1757,6 +1765,83 @@ export function memoryFolioGrant(params: {
   return { ok: true, balanceAfter: u.folioBalance };
 }
 
+export function memoryKycTryDebit(params: {
+  userId: string;
+  organizationId: string;
+  cost: number;
+  refType?: string | null;
+  refId?: string | null;
+  createdByUserId: string | null;
+}): { ok: true; balanceAfter: number } | { ok: false; message: string } {
+  seed();
+  const u = $m().usersById.get(params.userId);
+  if (!u || u.organizationId !== params.organizationId) {
+    return {
+      ok: false,
+      message:
+        "Tu sesión no coincide con los datos en memoria (p. ej. tras reiniciar el servidor). Cierra sesión y vuelve a entrar.",
+    };
+  }
+  if (u.kycBalance < params.cost) {
+    return {
+      ok: false,
+      message: "No tienes suficientes créditos KYC.",
+    };
+  }
+  u.kycBalance -= params.cost;
+  touch(u);
+  const entry: MemoryFolioLedgerEntry = {
+    id: memCuid(),
+    userId: params.userId,
+    organizationId: params.organizationId,
+    delta: -params.cost,
+    balanceAfter: u.kycBalance,
+    reason: FolioLedgerReason.KYC_VALIDATION,
+    refType: params.refType ?? null,
+    refId: params.refId ?? null,
+    createdAt: new Date(),
+    createdByUserId: params.createdByUserId,
+  };
+  $m().folioLedger.push(entry);
+  return { ok: true, balanceAfter: u.kycBalance };
+}
+
+export function memoryKycGrant(params: {
+  userId: string;
+  organizationId: string;
+  delta: number;
+  reason: FolioLedgerReason;
+  createdByUserId: string | null;
+}): { ok: true; balanceAfter: number } | { ok: false; message: string } {
+  seed();
+  if (params.delta <= 0) {
+    return { ok: false, message: "El monto debe ser positivo." };
+  }
+  const u = $m().usersById.get(params.userId);
+  if (!u || u.organizationId !== params.organizationId) {
+    return {
+      ok: false,
+      message:
+        "Tu sesión no coincide con los datos en memoria (p. ej. tras reiniciar el servidor). Cierra sesión y vuelve a entrar.",
+    };
+  }
+  u.kycBalance += params.delta;
+  touch(u);
+  $m().folioLedger.push({
+    id: memCuid(),
+    userId: params.userId,
+    organizationId: params.organizationId,
+    delta: params.delta,
+    balanceAfter: u.kycBalance,
+    reason: params.reason,
+    refType: null,
+    refId: null,
+    createdAt: new Date(),
+    createdByUserId: params.createdByUserId,
+  });
+  return { ok: true, balanceAfter: u.kycBalance };
+}
+
 export function memoryFolioLedgerForUser(userId: string, take: number) {
   seed();
   return $m().folioLedger
@@ -1779,6 +1864,32 @@ export function memoryFolioLedgerSuperadmin(filters: { userId?: string; organiza
     }));
 }
 
+/** Suma débitos de envío (folio) y KYC ligados a un documento (misma lógica que Postgres `groupBy`). */
+export function memoryFolioLedgerDebitAggregatesForDocumentRef(
+  documentId: string,
+  organizationId: string,
+): { folio: { userId: string; credits: number }[]; kyc: { userId: string; credits: number }[] } {
+  seed();
+  const folioMap = new Map<string, number>();
+  const kycMap = new Map<string, number>();
+  for (const e of $m().folioLedger) {
+    if (e.organizationId !== organizationId) continue;
+    if (e.refType !== "document" || e.refId !== documentId) continue;
+    if (e.delta >= 0) continue;
+    const amt = -e.delta;
+    if (e.reason === FolioLedgerReason.SEND_STANDARD || e.reason === FolioLedgerReason.SEND_PREMIUM) {
+      folioMap.set(e.userId, (folioMap.get(e.userId) ?? 0) + amt);
+    } else if (e.reason === FolioLedgerReason.KYC_VALIDATION) {
+      kycMap.set(e.userId, (kycMap.get(e.userId) ?? 0) + amt);
+    }
+  }
+  const pack = (m: Map<string, number>) =>
+    [...m.entries()]
+      .filter(([, c]) => c > 0)
+      .map(([userId, credits]) => ({ userId, credits }));
+  return { folio: pack(folioMap), kyc: pack(kycMap) };
+}
+
 export function memorySuperAdminUsersSearch(q: string, take: number) {
   seed();
   const term = q.trim().toLowerCase();
@@ -1793,6 +1904,7 @@ export function memorySuperAdminUsersSearch(q: string, take: number) {
     role: u.role,
     organizationId: u.organizationId,
     folioBalance: u.folioBalance,
+    kycBalance: u.kycBalance,
   }));
 }
 

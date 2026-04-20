@@ -25,6 +25,8 @@ enum FolioLedgerReason {
   ADJUSTMENT
   /// Regalo inicial al crear organización (prueba SaaS)
   TRIAL_GRANT
+  /// Débito por activar verificación KYC en asignación de firmantes (cartera `kycBalance`).
+  KYC_VALIDATION
 }
 
 model Organization {
@@ -53,6 +55,8 @@ model User {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   /// Saldo de créditos de folio (envío estándar = 1, premium = 2)
   folioBalance   Int          @default(0)
+  /// Saldo de créditos para activar KYC por firmante en asignación (no es el mismo saldo que folios).
+  kycBalance     Int          @default(0)
   /// Acceso al panel revocado por un administrador; el registro se conserva.
   isRevoked      Boolean      @default(false)
   createdAt      DateTime     @default(now())

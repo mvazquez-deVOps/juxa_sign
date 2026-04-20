@@ -1,6 +1,6 @@
 import {
+  FolioLedgerReason,
   Prisma,
-  type FolioLedgerReason,
   type SigningJobStatus,
   type UserRole,
 } from "@prisma/client";
@@ -34,6 +34,7 @@ import {
   memoryFindDocumentInOrg,
   memoryFolioGrant,
   memoryFolioLedgerForUser,
+  memoryFolioLedgerDebitAggregatesForDocumentRef,
   memoryFolioLedgerSuperadmin,
   memoryFolioPackCreate,
   memoryFolioPackDelete,
@@ -41,6 +42,8 @@ import {
   memoryFolioPacksListActive,
   memoryFolioPacksListAll,
   memoryFolioTryDebit,
+  memoryKycGrant,
+  memoryKycTryDebit,
   memoryHomeDashboardCountsForOrg,
   memoryNextDigidClient,
   memoryOrgAdminEmailsForNotify,
@@ -210,6 +213,15 @@ export async function dbUserFolioBalance(userId: string): Promise<number> {
   const p = prisma;
   const u = await p.user.findUnique({ where: { id: userId }, select: { folioBalance: true } });
   return u?.folioBalance ?? 0;
+}
+
+export async function dbUserKycBalance(userId: string): Promise<number> {
+  if (isMemoryDataStore()) {
+    return memoryUserFindById(userId)?.kycBalance ?? 0;
+  }
+  const p = prisma;
+  const u = await p.user.findUnique({ where: { id: userId }, select: { kycBalance: true } });
+  return u?.kycBalance ?? 0;
 }
 
 export async function dbUserCreateFromInvite(data: {
@@ -1293,6 +1305,313 @@ export async function dbFolioGrantCredits(params: {
     });
   } catch {
     return { ok: false, message: "No se pudo acreditar folios." };
+  }
+}
+
+/** Débito de créditos KYC (cartera `kycBalance`); auditoría en `FolioLedgerEntry` con razón `KYC_VALIDATION`. */
+export async function dbKycTryDebitForAssignment(params: {
+  userId: string;
+  organizationId: string;
+  cost: number;
+  refType?: string | null;
+  refId?: string | null;
+  createdByUserId: string | null;
+}): Promise<{ ok: true; balanceAfter: number } | { ok: false; message: string }> {
+  if (params.cost <= 0) {
+    return { ok: true, balanceAfter: await dbUserKycBalance(params.userId) };
+  }
+  if (isMemoryDataStore()) {
+    return memoryKycTryDebit({
+      userId: params.userId,
+      organizationId: params.organizationId,
+      cost: params.cost,
+      refType: params.refType,
+      refId: params.refId,
+      createdByUserId: params.createdByUserId,
+    });
+  }
+  const p = prisma;
+  try {
+    return await p.$transaction(async (tx) => {
+      const user = await tx.user.findFirst({
+        where: { id: params.userId, organizationId: params.organizationId },
+      });
+      if (!user) {
+        return {
+          ok: false as const,
+          message:
+            "Usuario no encontrado en esta organización. Si cambiaste de cuenta, modo memoria/Postgres o reiniciaste el servidor, cierra sesión y vuelve a entrar.",
+        };
+      }
+      if (user.kycBalance < params.cost) {
+        return { ok: false as const, message: "No tienes suficientes créditos KYC." };
+      }
+      const balanceAfter = user.kycBalance - params.cost;
+      await tx.user.update({
+        where: { id: user.id },
+        data: { kycBalance: balanceAfter },
+      });
+      await tx.folioLedgerEntry.create({
+        data: {
+          userId: params.userId,
+          organizationId: params.organizationId,
+          delta: -params.cost,
+          balanceAfter,
+          reason: FolioLedgerReason.KYC_VALIDATION,
+          refType: params.refType ?? null,
+          refId: params.refId ?? null,
+          createdByUserId: params.createdByUserId,
+        },
+      });
+      return { ok: true as const, balanceAfter };
+    });
+  } catch {
+    return { ok: false as const, message: "No se pudo registrar el débito de créditos KYC." };
+  }
+}
+
+/** Acredita créditos KYC (p. ej. reembolso por fallo del proveedor). `balanceAfter` en el ledger refleja `kycBalance`. */
+export async function dbKycGrantCredits(params: {
+  userId: string;
+  delta: number;
+  reason: FolioLedgerReason;
+  createdByUserId: string | null;
+}): Promise<{ ok: true; balanceAfter: number } | { ok: false; message: string }> {
+  if (isMemoryDataStore()) {
+    const u = memoryUserFindById(params.userId);
+    if (!u) return { ok: false, message: "Usuario no encontrado." };
+    return memoryKycGrant({
+      userId: params.userId,
+      organizationId: u.organizationId,
+      delta: params.delta,
+      reason: params.reason,
+      createdByUserId: params.createdByUserId,
+    });
+  }
+  if (params.delta <= 0) {
+    return { ok: false, message: "El monto debe ser positivo." };
+  }
+  const p = prisma;
+  try {
+    return await p.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({ where: { id: params.userId } });
+      if (!user) return { ok: false as const, message: "Usuario no encontrado." };
+      const balanceAfter = user.kycBalance + params.delta;
+      await tx.user.update({
+        where: { id: user.id },
+        data: { kycBalance: balanceAfter },
+      });
+      await tx.folioLedgerEntry.create({
+        data: {
+          userId: user.id,
+          organizationId: user.organizationId,
+          delta: params.delta,
+          balanceAfter,
+          reason: params.reason,
+          refType: null,
+          refId: null,
+          createdByUserId: params.createdByUserId,
+        },
+      });
+      return { ok: true as const, balanceAfter };
+    });
+  } catch {
+    return { ok: false, message: "No se pudo acreditar créditos KYC." };
+  }
+}
+
+function isCanceledDocumentStatus(status: string | null | undefined): boolean {
+  if (!status?.trim()) return false;
+  const u = status.trim().toUpperCase();
+  return u === "CANCELED" || u === "CANCELLED" || u === "CANCELADO";
+}
+
+/** Débitos de envío (SEND_*) y KYC por `refType=document` + `refId` del documento (para reembolso al cancelar). */
+export async function dbLedgerDocumentSendAndKycDebitAggregates(
+  documentId: string,
+  organizationId: string,
+): Promise<{ folio: { userId: string; credits: number }[]; kyc: { userId: string; credits: number }[] }> {
+  if (isMemoryDataStore()) {
+    return memoryFolioLedgerDebitAggregatesForDocumentRef(documentId, organizationId);
+  }
+  const p = prisma;
+  const [folioGroups, kycGroups] = await Promise.all([
+    p.folioLedgerEntry.groupBy({
+      by: ["userId"],
+      where: {
+        refType: "document",
+        refId: documentId,
+        organizationId,
+        delta: { lt: 0 },
+        reason: { in: [FolioLedgerReason.SEND_STANDARD, FolioLedgerReason.SEND_PREMIUM] },
+      },
+      _sum: { delta: true },
+    }),
+    p.folioLedgerEntry.groupBy({
+      by: ["userId"],
+      where: {
+        refType: "document",
+        refId: documentId,
+        organizationId,
+        delta: { lt: 0 },
+        reason: FolioLedgerReason.KYC_VALIDATION,
+      },
+      _sum: { delta: true },
+    }),
+  ]);
+  const pack = (groups: { userId: string; _sum: { delta: number | null } }[]) =>
+    groups
+      .map((g) => {
+        const sum = g._sum.delta ?? 0;
+        const credits = sum < 0 ? -sum : 0;
+        return { userId: g.userId, credits };
+      })
+      .filter((x) => x.credits > 0);
+  return { folio: pack(folioGroups), kyc: pack(kycGroups) };
+}
+
+/**
+ * Marca el documento como cancelado y acredita folios/KYC según los débitos previos del ledger.
+ * Idempotente: si el documento ya está cancelado, no vuelve a acreditar.
+ */
+export async function dbDocumentCancelWithLedgerRefunds(params: {
+  documentId: string;
+  organizationId: string;
+  folioRefunds: { userId: string; credits: number }[];
+  kycRefunds: { userId: string; credits: number }[];
+  createdByUserId: string | null;
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { documentId, organizationId, folioRefunds, kycRefunds, createdByUserId } = params;
+  const now = new Date();
+
+  if (isMemoryDataStore()) {
+    const doc = memoryDocumentFindFirstInOrg(documentId, organizationId);
+    if (!doc) return { ok: false, message: "Documento no encontrado." };
+    if (isCanceledDocumentStatus(doc.status)) {
+      return { ok: true };
+    }
+    for (const fr of folioRefunds) {
+      if (fr.credits <= 0) continue;
+      const r = await dbFolioGrantCredits({
+        userId: fr.userId,
+        delta: fr.credits,
+        reason: FolioLedgerReason.ADJUSTMENT,
+        createdByUserId,
+      });
+      if (!r.ok) return { ok: false, message: r.message };
+    }
+    for (const kr of kycRefunds) {
+      if (kr.credits <= 0) continue;
+      const r = await dbKycGrantCredits({
+        userId: kr.userId,
+        delta: kr.credits,
+        reason: FolioLedgerReason.ADJUSTMENT,
+        createdByUserId,
+      });
+      if (!r.ok) return { ok: false, message: r.message };
+    }
+    memoryDocumentUpdate(documentId, { status: "CANCELED", lastStatusSyncAt: now });
+    return { ok: true };
+  }
+
+  const p = prisma;
+  try {
+    await p.$transaction(async (tx) => {
+      const terminalForCancelClaim = [
+        "CANCELED",
+        "CANCELLED",
+        "CANCELADO",
+        "COMPLETED",
+        "COMPLETADO",
+        "Completado",
+        "completado",
+      ] as const;
+      const claim = await tx.document.updateMany({
+        where: {
+          id: documentId,
+          company: { organizationId },
+          OR: [{ status: null }, { status: { notIn: [...terminalForCancelClaim] } }],
+        },
+        data: { status: "CANCELED", lastStatusSyncAt: now },
+      });
+      if (claim.count === 0) {
+        const cur = await tx.document.findFirst({
+          where: { id: documentId, company: { organizationId } },
+          select: { status: true },
+        });
+        if (!cur) throw new Error("NOT_FOUND");
+        if (isCanceledDocumentStatus(cur.status)) {
+          return;
+        }
+        throw new Error("STATE_CONFLICT");
+      }
+      const applyFolio = async (userId: string, credits: number) => {
+        if (credits <= 0) return;
+        const user = await tx.user.findFirst({
+          where: { id: userId, organizationId },
+        });
+        if (!user) throw new Error(`USER_NOT_IN_ORG:${userId}`);
+        const balanceAfter = user.folioBalance + credits;
+        await tx.user.update({ where: { id: user.id }, data: { folioBalance: balanceAfter } });
+        await tx.folioLedgerEntry.create({
+          data: {
+            userId: user.id,
+            organizationId: user.organizationId,
+            delta: credits,
+            balanceAfter,
+            reason: FolioLedgerReason.ADJUSTMENT,
+            refType: null,
+            refId: null,
+            createdByUserId,
+          },
+        });
+      };
+      const applyKyc = async (userId: string, credits: number) => {
+        if (credits <= 0) return;
+        const user = await tx.user.findFirst({
+          where: { id: userId, organizationId },
+        });
+        if (!user) throw new Error(`USER_NOT_IN_ORG:${userId}`);
+        const balanceAfter = user.kycBalance + credits;
+        await tx.user.update({ where: { id: user.id }, data: { kycBalance: balanceAfter } });
+        await tx.folioLedgerEntry.create({
+          data: {
+            userId: user.id,
+            organizationId: user.organizationId,
+            delta: credits,
+            balanceAfter,
+            reason: FolioLedgerReason.ADJUSTMENT,
+            refType: null,
+            refId: null,
+            createdByUserId,
+          },
+        });
+      };
+      for (const fr of folioRefunds) {
+        await applyFolio(fr.userId, fr.credits);
+      }
+      for (const kr of kycRefunds) {
+        await applyKyc(kr.userId, kr.credits);
+      }
+    });
+    return { ok: true };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    if (msg === "NOT_FOUND") return { ok: false, message: "Documento no encontrado." };
+    if (msg === "STATE_CONFLICT") {
+      return {
+        ok: false,
+        message: "No se pudo cancelar: el documento ya no admite esta acción (p. ej. completado).",
+      };
+    }
+    if (msg.startsWith("USER_NOT_IN_ORG:")) {
+      return {
+        ok: false,
+        message: "No se pudo reembolsar: un usuario del movimiento no pertenece a esta organización.",
+      };
+    }
+    console.error("[dbDocumentCancelWithLedgerRefunds]", e);
+    return { ok: false, message: "No se pudo completar la cancelación en base de datos." };
   }
 }
 

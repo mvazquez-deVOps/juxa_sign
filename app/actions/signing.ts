@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { FolioLedgerReason } from "@prisma/client";
 import { z } from "zod";
 import {
   dbDocumentFindFirstInOrgWithCompany,
@@ -8,6 +9,8 @@ import {
   dbDocumentSignatoryReplace,
   dbFolioGrantCredits,
   dbFolioTryDebitForSend,
+  dbKycGrantCredits,
+  dbKycTryDebitForAssignment,
   dbSignatoryFindManyByIds,
 } from "@/lib/data/repository";
 import {
@@ -25,6 +28,8 @@ import { buildCoordinatesForDocumentInOrg } from "@/app/actions/document";
 import { digidUserMessage } from "@/lib/digid-user-message";
 import { shouldSkipFolioDebitForUserId } from "@/lib/folio-enforcement";
 import { folioCreditsForSend, folioReasonForSend } from "@/lib/folio-cost";
+import { KYC_ASSIGNMENT_CREDIT_COST } from "@/lib/kyc-cost";
+import { shouldSkipKycDebitForUserId } from "@/lib/kyc-enforcement";
 import { getDocumentSendReadiness } from "@/lib/document-send-readiness";
 import { alignLocalSigningUrlWithRequest } from "@/lib/align-local-signing-url";
 import { gateMutation } from "@/lib/gate";
@@ -33,6 +38,15 @@ const assignSchema = z.object({
   documentId: z.string().cuid(),
   signatoryIds: z.array(z.string().cuid()).min(1),
 });
+
+/** Documento + empresa + enlaces firmante/KYC (Postgres y memoria comparten esta forma para asignación). */
+type DocumentForAssignSignatories = {
+  id: string;
+  companyId: string;
+  digidDocumentId: number;
+  company: { digidIdClient: number };
+  signatories: { signatoryId: string; kyc: boolean }[];
+};
 
 export type SigningActionState = { ok: boolean; message?: string };
 
@@ -53,7 +67,10 @@ export async function assignSignatoriesToDocument(
   if (!parsed.success) {
     return { ok: false, message: "Selecciona al menos un firmante." };
   }
-  const doc = await dbDocumentFindFirstInOrgWithCompany(parsed.data.documentId, orgId);
+  const doc = (await dbDocumentFindFirstWithCompanyAndSignatoryLinks(
+    parsed.data.documentId,
+    orgId,
+  )) as DocumentForAssignSignatories | null;
   if (!doc) return { ok: false, message: "Documento no encontrado." };
 
   const signs = await dbSignatoryFindManyByIds(parsed.data.signatoryIds, doc.companyId);
@@ -61,23 +78,74 @@ export async function assignSignatoriesToDocument(
 
   const kycFor = (signatoryId: string) => formData.get(`kyc_${signatoryId}`) === "1";
 
-  await dbDocumentSignatoryReplace(
-    doc.id,
-    signs.map((s) => ({ signatoryId: s.id, kyc: kycFor(s.id) })),
-  );
+  const oldRows = doc.signatories.map((ds) => ({
+    signatoryId: ds.signatoryId,
+    kyc: ds.kyc,
+  }));
+  const oldKycBySignatoryId = new Map(oldRows.map((r) => [r.signatoryId, r.kyc]));
+
+  const newRows = signs.map((s) => ({
+    signatoryId: s.id,
+    kyc: kycFor(s.id),
+  }));
+
+  let newKycActivations = 0;
+  for (const row of newRows) {
+    const prev = oldKycBySignatoryId.get(row.signatoryId) ?? false;
+    if (row.kyc && !prev) newKycActivations += 1;
+  }
+
+  const actingUserId = g.session.user.id;
+  if (!actingUserId) {
+    return { ok: false, message: "Sesión inválida." };
+  }
+
+  const cost = newKycActivations * KYC_ASSIGNMENT_CREDIT_COST;
+  let debited = 0;
+
+  if (cost > 0 && !shouldSkipKycDebitForUserId(actingUserId)) {
+    const debit = await dbKycTryDebitForAssignment({
+      userId: actingUserId,
+      organizationId: orgId,
+      cost,
+      refType: "document",
+      refId: doc.id,
+      createdByUserId: actingUserId,
+    });
+    if (!debit.ok) {
+      return { ok: false, message: debit.message };
+    }
+    debited = cost;
+  }
 
   try {
+    await dbDocumentSignatoryReplace(doc.id, newRows);
     const res = await asignarFirmantesDocumento({
       IdClient: doc.company.digidIdClient,
       IdDocument: doc.digidDocumentId,
       signatories: signs.map((s) => ({ id: s.digidSignatoryId, kyc: kycFor(s.id) })),
     });
     if (!res.success) {
-      return { ok: false, message: res.message ?? "No se pudo asignar en el proveedor." };
+      throw new Error(res.message ?? "No se pudo asignar en el proveedor.");
     }
     revalidatePath(`/documentos/${doc.id}`);
     return { ok: true, message: "Firmantes asignados." };
   } catch (e) {
+    if (debited > 0) {
+      const refund = await dbKycGrantCredits({
+        userId: actingUserId,
+        delta: debited,
+        reason: FolioLedgerReason.ADJUSTMENT,
+        createdByUserId: null,
+      });
+      if (!refund.ok) {
+        console.error("[assignSignatoriesToDocument] reembolso KYC fallido:", refund.message);
+      }
+    }
+    await dbDocumentSignatoryReplace(doc.id, oldRows);
+    if (e instanceof Error && e.message) {
+      return { ok: false, message: e.message };
+    }
     return { ok: false, message: digidUserMessage(e, "No se pudo asignar firmantes en el proveedor.") };
   }
 }

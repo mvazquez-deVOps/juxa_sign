@@ -449,12 +449,49 @@ export async function infoDocumento(body: {
 
 // --- 10 Cancelar ---
 
+/** Respuesta exitosa de `dCancelarDocumento` (DIGID devuelve `Codigo: 200`). */
+export type CancelarDocumentoDigidOk = {
+  Codigo: 200;
+  ExtraInfo?: LegacyRegistrarResponse["ExtraInfo"];
+};
+
+export function parseCancelarDocumentoDigidResponse(
+  data: unknown,
+): { ok: true; body: CancelarDocumentoDigidOk } | { ok: false; message: string } {
+  if (typeof data !== "object" || data === null) {
+    return { ok: false, message: "Respuesta inválida del proveedor al cancelar el documento." };
+  }
+  const o = data as Record<string, unknown>;
+  const codigo = Number(o.Codigo);
+  if (!Number.isFinite(codigo)) {
+    return { ok: false, message: "Respuesta inválida del proveedor (sin código al cancelar)." };
+  }
+  if (codigo !== 200) {
+    const desc =
+      o.ExtraInfo && typeof o.ExtraInfo === "object"
+        ? (o.ExtraInfo as { Descripcion?: string }).Descripcion
+        : undefined;
+    return {
+      ok: false,
+      message:
+        typeof desc === "string" && desc.trim()
+          ? desc.trim()
+          : `El proveedor rechazó la cancelación (código ${codigo}).`,
+    };
+  }
+  return { ok: true, body: { Codigo: 200 as const, ExtraInfo: o.ExtraInfo as CancelarDocumentoDigidOk["ExtraInfo"] } };
+}
+
+/**
+ * POST legacy `dCancelarDocumento` (Usuario, Clave, Token, Modo se inyectan en `digidPostLegacy`).
+ * Solo persiste cancelación local si `Codigo === 200`.
+ */
 export async function cancelarDocumento(body: {
   IdCliente: number;
   IdDocumento: number;
-}): Promise<LegacyRegistrarResponse> {
+}): Promise<{ ok: true; body: CancelarDocumentoDigidOk } | { ok: false; message: string }> {
   const data = await digidPostLegacy("dCancelarDocumento", body);
-  return data as LegacyRegistrarResponse;
+  return parseCancelarDocumentoDigidResponse(data);
 }
 
 export async function urlFirmaFirmante(body: {

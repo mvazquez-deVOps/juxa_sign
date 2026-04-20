@@ -20,6 +20,8 @@ const reasonLabels: Record<string, string> = {
   SEND_PREMIUM: "Envío premium",
   ADMIN_TRANSFER: "Transferencia (admin org)",
   ADJUSTMENT: "Ajuste",
+  TRIAL_GRANT: "Folio de bienvenida",
+  KYC_VALIDATION: "Validación KYC",
 };
 
 export default async function ConfiguracionFoliosPage() {
