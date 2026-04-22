@@ -21,9 +21,9 @@ const bodySchema = z.object({
 });
 
 /**
- * Dispara envío a firma (opciones por defecto) para un documento del tenant.
+ * Dispara envío a firma (opciones por defecto: **folio premium / NOM-151**, igual que envío manual y lotes).
  * Idempotencia: si envías `clientReference`, la misma org + referencia devuelve el job existente.
- * Descuenta folios de la cartera del usuario dueño de la API key.
+ * Descuenta folios de la cartera del usuario dueño de la API key (2 créditos por envío premium).
  */
 export async function POST(req: NextRequest) {
   if (!allowApiV1Request(clientIp(req))) {

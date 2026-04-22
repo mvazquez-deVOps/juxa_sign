@@ -1,23 +1,17 @@
-import Link from "next/link";
 import {
   juxaLoginCardClass,
   juxaLoginEyebrowClass,
-  juxaLoginMutedClass,
   juxaLoginTitleClass,
+  juxaPublicThemeToggleClass,
 } from "@/components/auth-page-styles";
-import { JuxaBrand } from "@/components/juxa-brand";
 import { JuxaLoginShell } from "@/components/juxa-login-shell";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { cn } from "@/lib/utils";
 import { RegistroForm } from "./registro-form";
 
 export const dynamic = "force-dynamic";
 
 export default function RegistroPage() {
-  const demoMode = Boolean(process.env.DEMO_PASSWORD?.trim());
-  const themeToggle = (
-    <ThemeToggle className="text-zinc-400 hover:bg-white/10 hover:text-white" />
-  );
+  const themeToggle = <ThemeToggle className={juxaPublicThemeToggleClass} />;
 
   return (
     <JuxaLoginShell topRight={themeToggle}>

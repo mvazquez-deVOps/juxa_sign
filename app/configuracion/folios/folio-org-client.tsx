@@ -14,7 +14,7 @@ const grantInitial: OrgFolioGrantState | null = null;
 export function FolioOrgGrantForm({
   users,
 }: {
-  users: { id: string; email: string; folioBalance: number; role: string }[];
+  users: { id: string; email: string; folioBalance: number; kycBalance: number; role: string }[];
 }) {
   const [state, formAction, pending] = useActionState(adminOrgGrantFolios, grantInitial);
   useEffect(() => {
@@ -45,7 +45,7 @@ export function FolioOrgGrantForm({
             <option value="">Selecciona…</option>
             {users.map((u) => (
               <option key={u.id} value={u.id}>
-                {u.email} · {u.role} · saldo {u.folioBalance}
+                {u.email} · {u.role} · folios {u.folioBalance} · KYC {u.kycBalance}
               </option>
             ))}
           </select>

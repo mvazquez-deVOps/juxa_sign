@@ -4,6 +4,7 @@ import {
   dbSuperAdminOrganizationsListForAdminTable,
   dbSuperAdminUsageOverview,
 } from "@/lib/data/repository";
+import { folioLedgerReasonLabel } from "@/lib/folio-ledger-labels";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -22,17 +23,6 @@ function formatDate(d: Date | null) {
   if (!d) return "—";
   return d.toLocaleDateString("es-MX", { dateStyle: "medium" });
 }
-
-const REASON_LABEL: Record<string, string> = {
-  SUPERADMIN_GRANT: "Regalo superadmin",
-  PURCHASE: "Compra",
-  SEND_STANDARD: "Envío estándar",
-  SEND_PREMIUM: "Envío premium",
-  ADMIN_TRANSFER: "Transferencia admin",
-  ADJUSTMENT: "Ajuste",
-  TRIAL_GRANT: "Regalo de prueba",
-  KYC_VALIDATION: "Validación KYC",
-};
 
 export default async function SuperadminUsoPage() {
   const now = Date.now();
@@ -133,7 +123,7 @@ export default async function SuperadminUsoPage() {
                     .sort((a, b) => b.entryCount - a.entryCount)
                     .map((row) => (
                       <TableRow key={row.reason}>
-                        <TableCell>{REASON_LABEL[row.reason] ?? row.reason}</TableCell>
+                        <TableCell>{folioLedgerReasonLabel(row.reason)}</TableCell>
                         <TableCell className="text-right tabular-nums">{row.entryCount}</TableCell>
                         <TableCell className="text-right tabular-nums">{row.sumDelta}</TableCell>
                       </TableRow>
@@ -170,7 +160,7 @@ export default async function SuperadminUsoPage() {
                     .sort((a, b) => b.entryCount - a.entryCount)
                     .map((row) => (
                       <TableRow key={row.reason}>
-                        <TableCell>{REASON_LABEL[row.reason] ?? row.reason}</TableCell>
+                        <TableCell>{folioLedgerReasonLabel(row.reason)}</TableCell>
                         <TableCell className="text-right tabular-nums">{row.entryCount}</TableCell>
                         <TableCell className="text-right tabular-nums">{row.sumDelta}</TableCell>
                       </TableRow>

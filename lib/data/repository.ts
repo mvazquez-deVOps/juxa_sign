@@ -192,7 +192,7 @@ export async function dbUserFindInOrg(userId: string, organizationId: string) {
   const p = prisma;
   return p.user.findFirst({
     where: { id: userId, organizationId },
-    select: { id: true, email: true, role: true, folioBalance: true },
+    select: { id: true, email: true, role: true, folioBalance: true, kycBalance: true },
   });
 }
 
@@ -222,6 +222,22 @@ export async function dbUserKycBalance(userId: string): Promise<number> {
   const p = prisma;
   const u = await p.user.findUnique({ where: { id: userId }, select: { kycBalance: true } });
   return u?.kycBalance ?? 0;
+}
+
+/** Una sola lectura de cartera para la UI de “Mis folios”. */
+export async function dbUserFolioAndKycBalances(
+  userId: string,
+): Promise<{ folioBalance: number; kycBalance: number }> {
+  if (isMemoryDataStore()) {
+    const u = memoryUserFindById(userId);
+    return { folioBalance: u?.folioBalance ?? 0, kycBalance: u?.kycBalance ?? 0 };
+  }
+  const p = prisma;
+  const u = await p.user.findUnique({
+    where: { id: userId },
+    select: { folioBalance: true, kycBalance: true },
+  });
+  return { folioBalance: u?.folioBalance ?? 0, kycBalance: u?.kycBalance ?? 0 };
 }
 
 export async function dbUserCreateFromInvite(data: {
@@ -1928,6 +1944,7 @@ export async function dbSuperAdminUsersSearch(q: string, take: number) {
       role: true,
       organizationId: true,
       folioBalance: true,
+      kycBalance: true,
     },
   });
   return users;

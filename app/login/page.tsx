@@ -3,10 +3,12 @@ import { Suspense } from "react";
 import {
   juxaLoginCardClass,
   juxaLoginEyebrowClass,
+  juxaLoginInputClass,
   juxaLoginLinkClass,
   juxaLoginMutedClass,
   juxaLoginPrimaryButtonClass,
   juxaLoginTitleClass,
+  juxaPublicThemeToggleClass,
 } from "@/components/auth-page-styles";
 import { JuxaBrand } from "@/components/juxa-brand";
 import { JuxaLoginShell } from "@/components/juxa-login-shell";
@@ -21,7 +23,9 @@ type Props = {
   searchParams: Promise<{ error?: string; from?: string; misconfig?: string; reason?: string }>;
 };
 
-const codeBox = "rounded-md border border-white/10 bg-black/40 px-1.5 py-0.5 font-mono text-[11px] text-zinc-300";
+const codeBox =
+  "rounded-md border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground " +
+  "dark:border-white/10 dark:bg-black/40 dark:text-zinc-300";
 
 export default async function LoginPage({ searchParams }: Props) {
   const { error, from, misconfig, reason } = await searchParams;
@@ -34,9 +38,7 @@ export default async function LoginPage({ searchParams }: Props) {
     !memoryStore &&
     !process.env.DEMO_ORGANIZATION_ID?.trim();
 
-  const themeToggle = (
-    <ThemeToggle className="text-zinc-400 hover:bg-white/10 hover:text-white" />
-  );
+  const themeToggle = <ThemeToggle className={juxaPublicThemeToggleClass} />;
 
   const sesionInvalidaBanner =
     reason === "sesion-invalida" ? (
@@ -92,7 +94,7 @@ export default async function LoginPage({ searchParams }: Props) {
           </div>
           <div className="mt-8">
             {misconfig ? (
-              <p className="mb-4 rounded-xl border border-red-500/35 bg-red-950/40 p-3 text-sm text-red-200">
+              <p className="mb-4 rounded-xl border border-red-500/35 bg-red-500/10 p-3 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">
                 Configuración incompleta: con <code className="font-mono text-xs">DEMO_PASSWORD</code> debes definir{" "}
                 <code className="font-mono text-xs">DEMO_AUTH_SECRET</code> (p. ej.{" "}
                 <code className="font-mono text-xs">openssl rand -hex 32</code>).
@@ -105,7 +107,7 @@ export default async function LoginPage({ searchParams }: Props) {
               </p>
             ) : null}
             {demoOrgMissing ? (
-              <p className="mb-4 rounded-xl border border-amber-500/35 bg-amber-950/30 p-3 text-sm text-amber-100">
+              <p className="mb-4 rounded-xl border border-amber-500/35 bg-amber-500/10 p-3 text-sm text-amber-950 dark:bg-amber-950/30 dark:text-amber-100">
                 Falta <code className="font-mono text-xs">DEMO_ORGANIZATION_ID</code>: sin él podrás entrar pero las
                 acciones del panel fallarán. Copia el <code className="font-mono text-xs">id</code> de una organización
                 desde Prisma Studio o el seed.
@@ -125,15 +127,12 @@ export default async function LoginPage({ searchParams }: Props) {
                   required={!misconfig && !demoOrgMissing}
                   disabled={!!misconfig || demoOrgMissing}
                   placeholder="••••••••"
-                  className={cn(
-                    "h-11 border-white/12 bg-black/35 text-white placeholder:text-zinc-600",
-                    "focus-visible:border-[#2ABDA8]/45 focus-visible:ring-2 focus-visible:ring-[#2ABDA8]/15",
-                    "rounded-xl disabled:opacity-50",
-                    error && "border-red-500/60",
-                  )}
+                  className={cn("h-11 rounded-xl", juxaLoginInputClass, error && "border-red-500/60")}
                 />
               </div>
-              {error ? <p className="text-sm text-red-300">Contraseña incorrecta. Vuelve a intentar.</p> : null}
+              {error ? (
+                <p className="text-sm text-red-600 dark:text-red-300">Contraseña incorrecta. Vuelve a intentar.</p>
+              ) : null}
               <Button
                 type="submit"
                 className={juxaLoginPrimaryButtonClass}
@@ -146,7 +145,7 @@ export default async function LoginPage({ searchParams }: Props) {
               <Link href="/" className={juxaLoginLinkClass}>
                 Volver al inicio
               </Link>{" "}
-              <span className="text-zinc-600">(requiere sesión si la demo está protegida)</span>
+              <span className="text-muted-foreground">(requiere sesión si la demo está protegida)</span>
             </p>
           </div>
         </div>

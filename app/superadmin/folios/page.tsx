@@ -3,6 +3,7 @@ import {
   dbFolioPacksListAll,
   dbSuperAdminUsersSearch,
 } from "@/lib/data/repository";
+import { folioLedgerCarteraLabel, folioLedgerReasonLabel } from "@/lib/folio-ledger-labels";
 import Link from "next/link";
 import {
   FolioSuperadminGrantForm,
@@ -20,17 +21,6 @@ import {
 import { FolioEconomicsSuperadminSection } from "@/components/folio-economics-superadmin-section";
 
 export const dynamic = "force-dynamic";
-
-const reasonLabels: Record<string, string> = {
-  SUPERADMIN_GRANT: "Acreditación plataforma",
-  PURCHASE: "Compra",
-  SEND_STANDARD: "Envío estándar",
-  SEND_PREMIUM: "Envío premium",
-  ADMIN_TRANSFER: "Transferencia",
-  ADJUSTMENT: "Ajuste",
-  TRIAL_GRANT: "Regalo de prueba (alta org.)",
-  KYC_VALIDATION: "Validación KYC",
-};
 
 function priceStr(v: unknown) {
   if (v != null && typeof v === "object" && "toString" in v) return (v as { toString: () => string }).toString();
@@ -62,10 +52,11 @@ export default async function SuperadminFoliosPage() {
       <div className="space-y-2">
         <h2 className="text-xl font-semibold">Folios y catálogo</h2>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          El saldo operativo de cada usuario vive en <code className="text-xs">folioBalance</code>; cada movimiento queda
-          auditado en <code className="text-xs">FolioLedgerEntry</code> (motivos como acreditación plataforma, envío estándar o
-          premium, transferencias entre miembros, etc.). Desde aquí puedes acreditar créditos, revisar el ledger global y
-          definir paquetes que el panel muestra en{" "}
+          El saldo de envíos vive en <code className="text-xs">folioBalance</code>; el de activaciones KYC en{" "}
+          <code className="text-xs">kycBalance</code>. Cada movimiento queda en{" "}
+          <code className="text-xs">FolioLedgerEntry</code> (acreditaciones, envíos, transferencias, validación de
+          identidad, etc.). Desde aquí puedes acreditar folios, revisar el ledger global y definir paquetes que el panel
+          muestra en{" "}
           <Link href="/folios/planes" className="font-medium text-primary underline">
             Planes
           </Link>
@@ -89,6 +80,7 @@ export default async function SuperadminFoliosPage() {
             <TableRow>
               <TableHead>Fecha</TableHead>
               <TableHead>Usuario</TableHead>
+              <TableHead>Cartera</TableHead>
               <TableHead>Motivo</TableHead>
               <TableHead className="text-right">Δ</TableHead>
               <TableHead className="text-right">Saldo después</TableHead>
@@ -97,7 +89,7 @@ export default async function SuperadminFoliosPage() {
           <TableBody>
             {ledger.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
                   Sin movimientos.
                 </TableCell>
               </TableRow>
@@ -110,7 +102,8 @@ export default async function SuperadminFoliosPage() {
                   <TableCell className="max-w-[200px] truncate">
                     {"user" in row && row.user && "email" in row.user ? row.user.email : "—"}
                   </TableCell>
-                  <TableCell>{reasonLabels[row.reason] ?? row.reason}</TableCell>
+                  <TableCell className="text-muted-foreground">{folioLedgerCarteraLabel(row.reason)}</TableCell>
+                  <TableCell>{folioLedgerReasonLabel(row.reason)}</TableCell>
                   <TableCell className="text-right tabular-nums font-medium">
                     {row.delta > 0 ? `+${row.delta}` : row.delta}
                   </TableCell>

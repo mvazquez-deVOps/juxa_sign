@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { juxaLoginHeroH1Class, juxaLoginHeroSpanMutedClass } from "@/components/auth-page-styles";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 
@@ -23,8 +24,8 @@ export function JuxaLoginShell({
   return (
     <div
       className={cn(
-        "relative flex min-h-screen flex-col bg-[#000000] text-white antialiased",
-        "selection:bg-[#2ABDA8]/25 selection:text-white",
+        "relative flex min-h-screen flex-col bg-background text-foreground antialiased transition-colors duration-200",
+        "selection:bg-[#2ABDA8]/25 selection:text-foreground dark:selection:text-white",
       )}
     >
       {topRight ? (
@@ -54,14 +55,14 @@ export function JuxaLoginShell({
 
             <div className="mt-10">
               {heroTitle ?? (
-                <h1 className="text-2xl font-light leading-tight tracking-tight text-white sm:text-3xl">
+                <h1 className={juxaLoginHeroH1Class}>
                   <span className="font-semibold">Firma electrónica</span>
-                  <span className="text-zinc-500"> — clara, segura y lista para producción.</span>
+                  <span className={juxaLoginHeroSpanMutedClass}> — clara, segura y lista para producción.</span>
                 </h1>
               )}
             </div>
 
-            <div className="mt-6 max-w-md text-sm font-light leading-relaxed text-zinc-400">
+            <div className="mt-6 max-w-md text-sm font-light leading-relaxed text-muted-foreground dark:text-zinc-400">
               {heroLead ?? (
                 <p>
                   Panel de envíos y seguimiento de firmas. Menos fricción, más control para tu equipo.
@@ -78,17 +79,17 @@ export function JuxaLoginShell({
         </main>
       </div>
 
-      <footer className="relative z-[1] border-t border-white/[0.06] px-6 py-5 text-[10px] uppercase tracking-[0.12em] text-zinc-500">
+      <footer className="relative z-[1] border-t border-border px-6 py-5 text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
             <span>JX Labs | Todos los derechos reservados &copy; {new Date().getFullYear()}</span>
-            <span className="hidden h-3 w-px bg-white/10 sm:inline" aria-hidden />
-            <span className="text-[#2ABDA8]/90">Encriptación de grado legal</span>
+            <span className="hidden h-3 w-px bg-border sm:inline" aria-hidden />
+            <span className="text-teal-700 dark:text-[#2ABDA8]/90">Encriptación de grado legal</span>
           </div>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-1 uppercase tracking-normal">
             <a
               href="mailto:soporte@juxa.mx"
-              className="text-zinc-500 transition hover:text-[#2ABDA8]"
+              className="text-muted-foreground transition hover:text-teal-700 dark:hover:text-[#2ABDA8]"
             >
               soporte@juxa.mx
             </a>

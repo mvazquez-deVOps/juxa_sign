@@ -542,11 +542,28 @@ export async function kycOnOff(body: {
   return res.json() as Promise<{ Success: boolean; Message?: string }>;
 }
 
-// --- 18 Certificar / constancia ---
+// --- 18 Certificar / constancia (NOM-151) — POST .../certify_doc, form-data + Bearer ---
 
 export type CertificarDocumentoResult =
   | { responseType: "pdf"; buffer: ArrayBuffer }
   | { responseType: "json"; body: { Success: boolean; Message?: string } };
+
+/**
+ * Certificación NOM-151: `IdClient` (int) y `Document` (PDF). Ver `docs/api-digid.md` §18.
+ * Internamente usa `certificarDocumento` (multipart + Authorization Bearer).
+ */
+export async function digidCertifyNom151Form(
+  idClient: number,
+  pdfBytes: ArrayBuffer | Uint8Array | Buffer,
+  documentFileName: string,
+): Promise<CertificarDocumentoResult> {
+  const baseName = documentFileName.trim() || "documento";
+  const withPdf = baseName.toLowerCase().endsWith(".pdf") ? baseName : `${baseName}.pdf`;
+  const fd = new FormData();
+  fd.set("IdClient", String(idClient));
+  fd.set("Document", new Blob([pdfBytes as BlobPart], { type: "application/pdf" }), withPdf);
+  return certificarDocumento(fd);
+}
 
 /**
  * DIGID puede responder JSON o PDF según ambiente. Se lee el cuerpo una sola vez.
@@ -556,6 +573,17 @@ export async function certificarDocumento(form: FormData): Promise<CertificarDoc
     method: "POST",
     body: form,
   });
+  if (!res.ok) {
+    const text = await res.text();
+    let msg: string | undefined;
+    try {
+      const data = JSON.parse(text) as Record<string, unknown>;
+      msg = parseDigidBearerResult(data).message;
+    } catch {
+      /* cuerpo no JSON */
+    }
+    throw new Error(msg ?? `certify_doc: HTTP ${res.status} — ${text.slice(0, 240)}`);
+  }
   const buffer = await res.arrayBuffer();
   const head = new Uint8Array(buffer.slice(0, 4));
   const isPdf =

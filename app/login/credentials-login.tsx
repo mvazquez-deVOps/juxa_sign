@@ -81,7 +81,9 @@ export function CredentialsLoginForm() {
           className={cn("h-11 rounded-xl", juxaLoginInputClass, error && "border-red-500/60")}
         />
       </div>
-      {error ? <p className="text-sm text-red-300">Credenciales incorrectas o usuario inexistente.</p> : null}
+      {error ? (
+        <p className="text-sm text-red-600 dark:text-red-300">Credenciales incorrectas o usuario inexistente.</p>
+      ) : null}
       <Button type="submit" className={juxaLoginPrimaryButtonClass} disabled={pending}>
         {pending ? "Entrando…" : "Acceder"}
       </Button>

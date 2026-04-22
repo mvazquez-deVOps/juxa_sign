@@ -7,7 +7,7 @@ import {
   dbCompanyFindFirstInOrg,
   dbDocumentFindFirstInOrgWithCompany,
 } from "@/lib/data/repository";
-import { certificarDocumento, registrarWebhook } from "@/lib/digid";
+import { digidCertifyNom151Form, registrarWebhook } from "@/lib/digid";
 import { gateMutation } from "@/lib/gate";
 import fs from "fs/promises";
 import path from "path";
@@ -70,11 +70,7 @@ export async function certifyStoredDocument(documentId: string): Promise<ConfigA
     });
     if (!pdfRes.ok) return { ok: false, message: "No se pudo descargar el PDF." };
     const buf = Buffer.from(await pdfRes.arrayBuffer());
-    const fd = new FormData();
-    fd.set("IdClient", String(doc.company.digidIdClient));
-    fd.set("Document", new Blob([buf], { type: "application/pdf" }), `${doc.nameDoc}.pdf`);
-
-    const res = await certificarDocumento(fd);
+    const res = await digidCertifyNom151Form(doc.company.digidIdClient, buf, doc.nameDoc);
 
     if (res.responseType === "json") {
       const b = res.body as Record<string, unknown>;

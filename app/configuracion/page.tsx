@@ -46,6 +46,7 @@ export default async function ConfiguracionPage() {
           email: u.email,
           role: u.role,
           folioBalance: u.folioBalance,
+          kycBalance: u.kycBalance,
         }))}
         invites={invites.map((i) => ({
           id: i.id,
