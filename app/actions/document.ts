@@ -25,11 +25,13 @@ import {
   buildSignatureCoordinatesJson,
   cancelarDocumento,
   crearDocumentoMultipart,
+  digidCertifyNom151Form,
   infoDocumento,
+  parseDigidBearerResult,
   type SignatureCoordinate,
 } from "@/lib/digid";
 import { digidUserMessage } from "@/lib/digid-user-message";
-import { isDocumentCancelBlocked } from "@/lib/document-cancel-policy";
+import { isDocumentCancelBlocked, isDocumentCompleted } from "@/lib/document-cancel-policy";
 import {
   gateDocumentStatusSync,
   gateMutation,
@@ -422,4 +424,83 @@ export async function cancelDocumentAction(
   revalidatePath(`/documentos/${parsed.data}`);
   revalidatePath(`/documentos/${parsed.data}/enviar`);
   return { ok: true, message: "Documento cancelado. Se reembolsaron los créditos aplicables." };
+}
+
+function safeConstanciaFileBase(name: string): string {
+  const t = name.trim().replace(/[^\w.\-áéíóúÁÉÍÓÚñÑ ]+/g, "_").slice(0, 80);
+  return t || "documento";
+}
+
+async function fetchStoredDocumentPdf(url: string): Promise<Buffer> {
+  const token = process.env.DIGID_TOKEN?.trim();
+  const pdfRes = await fetch(url, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+  if (!pdfRes.ok) {
+    throw new Error(`No se pudo descargar el PDF del documento (HTTP ${pdfRes.status}).`);
+  }
+  return Buffer.from(await pdfRes.arrayBuffer());
+}
+
+export type DownloadConstanciaResult =
+  | { ok: true; pdfBase64: string; fileName: string }
+  | { ok: false; message: string };
+
+/**
+ * Genera constancia NOM-151 vía DIGID `certify_doc` y devuelve el PDF en base64 para descarga en el cliente.
+ * Cualquier miembro de la org con sesión (incl. VIEWER) puede descargar si el documento está completado.
+ */
+export async function downloadConstanciaAction(documentId: string): Promise<DownloadConstanciaResult> {
+  const g = await requireOrgSession();
+  if (!g.ok) return { ok: false, message: g.message };
+
+  const orgId = g.session.user.organizationId;
+  const parsed = documentIdSchema.safeParse(documentId);
+  if (!parsed.success) {
+    return { ok: false, message: "Identificador de documento inválido." };
+  }
+
+  const doc = await dbDocumentFindFirstInOrgWithCompany(parsed.data, orgId);
+  if (!doc) {
+    return { ok: false, message: "Documento no encontrado." };
+  }
+
+  if (!isDocumentCompleted(doc.status)) {
+    return {
+      ok: false,
+      message: "La constancia NOM-151 solo está disponible cuando el documento está firmado (estado completado).",
+    };
+  }
+
+  if (!doc.urlDocumento?.trim()) {
+    return { ok: false, message: "El documento no tiene URL de PDF para certificar." };
+  }
+
+  try {
+    const pdfBuf = await fetchStoredDocumentPdf(doc.urlDocumento.trim());
+    const cert = await digidCertifyNom151Form(doc.company.digidIdClient, pdfBuf, doc.nameDoc);
+
+    if (cert.responseType === "json") {
+      const body = cert.body as Record<string, unknown>;
+      const { ok: digidOk, message: digidMsg } = parseDigidBearerResult(body);
+      if (!digidOk) {
+        return { ok: false, message: digidMsg ?? "El proveedor rechazó la certificación." };
+      }
+      return {
+        ok: false,
+        message:
+          digidMsg ??
+          "El proveedor aceptó la solicitud pero no devolvió PDF en esta respuesta. Revisa el manual del endpoint o el panel DIGID.",
+      };
+    }
+
+    const base = safeConstanciaFileBase(doc.nameDoc);
+    return {
+      ok: true,
+      pdfBase64: Buffer.from(cert.buffer).toString("base64"),
+      fileName: `Constancia-NOM151-${base}.pdf`,
+    };
+  } catch (e) {
+    return { ok: false, message: digidUserMessage(e, "No se pudo generar la constancia.") };
+  }
 }

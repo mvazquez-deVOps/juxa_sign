@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { dbFolioLedgerSuperadmin, dbOrgUsersList } from "@/lib/data/repository";
+import { folioLedgerCarteraLabel, folioLedgerReasonLabel } from "@/lib/folio-ledger-labels";
 import { requireAdminContext } from "@/lib/org-scope";
 import {
   Table,
@@ -12,17 +13,6 @@ import {
 import { FolioOrgGrantForm } from "./folio-org-client";
 
 export const dynamic = "force-dynamic";
-
-const reasonLabels: Record<string, string> = {
-  SUPERADMIN_GRANT: "Acreditación plataforma",
-  PURCHASE: "Compra",
-  SEND_STANDARD: "Envío estándar",
-  SEND_PREMIUM: "Envío premium",
-  ADMIN_TRANSFER: "Transferencia (admin org)",
-  ADJUSTMENT: "Ajuste",
-  TRIAL_GRANT: "Folio de bienvenida",
-  KYC_VALIDATION: "Validación KYC",
-};
 
 export default async function ConfiguracionFoliosPage() {
   const { organizationId } = await requireAdminContext();
@@ -51,6 +41,7 @@ export default async function ConfiguracionFoliosPage() {
           email: u.email,
           role: u.role,
           folioBalance: u.folioBalance,
+          kycBalance: u.kycBalance,
         }))}
       />
 
@@ -61,6 +52,7 @@ export default async function ConfiguracionFoliosPage() {
             <TableRow>
               <TableHead>Fecha</TableHead>
               <TableHead>Usuario</TableHead>
+              <TableHead>Cartera</TableHead>
               <TableHead>Motivo</TableHead>
               <TableHead className="text-right">Δ</TableHead>
               <TableHead className="text-right">Saldo después</TableHead>
@@ -69,7 +61,7 @@ export default async function ConfiguracionFoliosPage() {
           <TableBody>
             {ledger.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
                   Sin movimientos.
                 </TableCell>
               </TableRow>
@@ -82,7 +74,8 @@ export default async function ConfiguracionFoliosPage() {
                   <TableCell className="max-w-[200px] truncate">
                     {"user" in row && row.user && "email" in row.user ? row.user.email : "—"}
                   </TableCell>
-                  <TableCell>{reasonLabels[row.reason] ?? row.reason}</TableCell>
+                  <TableCell className="text-muted-foreground">{folioLedgerCarteraLabel(row.reason)}</TableCell>
+                  <TableCell>{folioLedgerReasonLabel(row.reason)}</TableCell>
                   <TableCell className="text-right tabular-nums font-medium">
                     {row.delta > 0 ? `+${row.delta}` : row.delta}
                   </TableCell>

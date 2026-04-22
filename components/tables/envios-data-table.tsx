@@ -13,7 +13,8 @@ import {
 import * as React from "react";
 import { Ban, Link2 } from "lucide-react";
 import { toast } from "sonner";
-import { cancelDocumentAction } from "@/app/actions/document";
+import { cancelDocumentAction, downloadConstanciaAction } from "@/app/actions/document";
+import { isDocumentCompleted } from "@/lib/document-cancel-policy";
 import { getBulkSignerUrls } from "@/app/actions/signing";
 import {
   AlertDialog,
@@ -40,6 +41,50 @@ export type EnvioRow = {
   lastStatusSyncAt: string | null;
   updatedAt: string;
 };
+
+function ConstanciaNom151Button({ documentId }: { documentId: string }) {
+  const [pending, start] = React.useTransition();
+
+  function onClick() {
+    start(async () => {
+      await toast.promise(
+        downloadConstanciaAction(documentId).then((r) => {
+          if (!r.ok) throw new Error(r.message);
+          const bin = atob(r.pdfBase64);
+          const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          const blob = new Blob([bytes], { type: "application/pdf" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = r.fileName;
+          a.rel = "noopener";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        }),
+        {
+          loading: "Generando constancia NOM-151…",
+          success: "Constancia descargada",
+          error: (e) => (e instanceof Error ? e.message : "No se pudo generar la constancia."),
+        },
+      );
+    });
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="link"
+      disabled={pending}
+      className="h-auto px-0 text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+      onClick={onClick}
+    >
+      {pending ? "Generando…" : "Constancia"}
+    </Button>
+  );
+}
 
 function EnviosRowActions({ row }: { row: EnvioRow }) {
   const [open, setOpen] = React.useState(false);
@@ -201,22 +246,29 @@ export function EnviosDataTable({
         id: "actions",
         header: () => <span>Acciones</span>,
         enableSorting: false,
-        cell: ({ row }) => (
-          <div className="flex flex-wrap items-center justify-start gap-3">
-            <Button variant="link" className="h-auto px-0 text-xs" asChild>
-              <Link
-                href={
-                  showEnviarLink
-                    ? `/documentos/${row.original.id}/enviar`
-                    : `/documentos/${row.original.id}`
-                }
-              >
-                {showEnviarLink ? "Panel envío" : "Detalle"}
-              </Link>
-            </Button>
-            <EnviosRowActions row={row.original} />
-          </div>
-        ),
+        cell: ({ row }) => {
+          const completed = isDocumentCompleted(row.original.status);
+          return (
+            <div className="flex flex-wrap items-center justify-start gap-3">
+              {completed ? (
+                <ConstanciaNom151Button documentId={row.original.id} />
+              ) : (
+                <Button variant="link" className="h-auto px-0 text-xs" asChild>
+                  <Link
+                    href={
+                      showEnviarLink
+                        ? `/documentos/${row.original.id}/enviar`
+                        : `/documentos/${row.original.id}`
+                    }
+                  >
+                    {showEnviarLink ? "Panel envío" : "Detalle"}
+                  </Link>
+                </Button>
+              )}
+              <EnviosRowActions row={row.original} />
+            </div>
+          );
+        },
       },
     ];
 

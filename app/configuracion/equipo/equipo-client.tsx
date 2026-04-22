@@ -45,6 +45,7 @@ export type TeamMemberRow = {
   email: string;
   role: string;
   folioBalance: number;
+  kycBalance: number;
 };
 
 export function TeamEquipoClient({
@@ -180,7 +181,7 @@ export function TeamEquipoClient({
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                       <span className="tabular-nums text-muted-foreground">
-                        {panelRoleLabel(u.role as UserRole)} · {u.folioBalance} folios
+                        {panelRoleLabel(u.role as UserRole)} · {u.folioBalance} folios · {u.kycBalance} KYC
                       </span>
                       {showRevoke ? (
                         <Button

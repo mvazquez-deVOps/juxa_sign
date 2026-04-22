@@ -22,7 +22,7 @@ const packInitial: SuperadminFolioPackState | null = null;
 export function FolioSuperadminGrantForm({
   users,
 }: {
-  users: { id: string; email: string; folioBalance: number; role: string }[];
+  users: { id: string; email: string; folioBalance: number; kycBalance: number; role: string }[];
 }) {
   const [state, formAction, pending] = useActionState(superadminFolioGrant, grantInitial);
   useEffect(() => {
@@ -46,7 +46,7 @@ export function FolioSuperadminGrantForm({
             <option value="">Selecciona…</option>
             {users.map((u) => (
               <option key={u.id} value={u.id}>
-                {u.email} · {u.role} · saldo {u.folioBalance}
+                {u.email} · {u.role} · folios {u.folioBalance} · KYC {u.kycBalance}
               </option>
             ))}
           </select>

@@ -371,7 +371,11 @@ export async function sendDocumentForSigning(
   return sendDocumentForSigningCore(orgId, parsed.data, { actingUserId: g.session.user.id });
 }
 
-/** API / jobs: envío con opciones por defecto. Sin `actingUserId` no hay descuento de cartera (API clave). */
+/**
+ * API / jobs / envíos masivos: mismas opciones base que el envío manual al panel — **folio premium (NOM-151)**,
+ * para alinear débito en Juxa (2 créditos) y `FolioPremium` en DIGID con cuentas que solo tienen folio premium.
+ * Sin `actingUserId` no hay descuento de cartera (API con clave).
+ */
 export async function sendDocumentForSigningDefaults(
   organizationId: string,
   documentId: string,
@@ -380,7 +384,7 @@ export async function sendDocumentForSigningDefaults(
   const parsed = sendSchema.parse({
     documentId,
     typeSign: 1,
-    folioPremium: false,
+    folioPremium: true,
     colorSign: "#000000",
     remider: 1,
     observerAprove: false,

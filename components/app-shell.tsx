@@ -42,6 +42,13 @@ const navPanelReadOnly = [
   { href: "/ayuda", label: "Ayuda", icon: CircleHelp },
 ];
 
+/** Rutas que no deben activarse con subrutas (p. ej. `/folios/planes` no marca "Mis folios"). */
+function navItemIsActive(pathname: string, href: string): boolean {
+  if (pathname === href) return true;
+  if (href === "/" || href === "/folios") return false;
+  return pathname.startsWith(`${href}/`);
+}
+
 export function AppShell({
   children,
   pathname,
@@ -106,7 +113,7 @@ export function AppShell({
         </div>
         <nav className="flex flex-1 flex-col gap-1 p-4">
           {nav.map((item) => {
-            const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+            const active = navItemIsActive(pathname, item.href);
             const Icon = item.icon;
             return (
               <Link
@@ -145,8 +152,7 @@ export function AppShell({
           </div>
           <nav className="flex gap-2 overflow-x-auto px-3 pb-3 text-sm">
             {nav.map((item) => {
-              const active =
-                pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+              const active = navItemIsActive(pathname, item.href);
               const Icon = item.icon;
               return (
                 <Link
