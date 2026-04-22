@@ -6,11 +6,14 @@ import { acceptOrganizationInvite, type AcceptInviteState } from "@/app/actions/
 import {
   juxaLoginCardClass,
   juxaLoginEyebrowClass,
+  juxaLoginHeroH1Class,
+  juxaLoginHeroSpanMutedClass,
   juxaLoginInputClass,
   juxaLoginLabelClass,
   juxaLoginMutedClass,
   juxaLoginPrimaryButtonClass,
   juxaLoginTitleClass,
+  juxaPublicThemeToggleClass,
 } from "@/components/auth-page-styles";
 import { ActionErrorDetails } from "@/components/action-error-details";
 import { JuxaBrand } from "@/components/juxa-brand";
@@ -53,11 +56,11 @@ export function InvitacionAcceptClient({
 
   return (
     <JuxaLoginShell
-      topRight={<ThemeToggle className="text-zinc-400 hover:bg-white/10 hover:text-white" />}
+      topRight={<ThemeToggle className={juxaPublicThemeToggleClass} />}
       heroTitle={
-        <h1 className="text-2xl font-light leading-tight tracking-tight text-white sm:text-3xl">
+        <h1 className={juxaLoginHeroH1Class}>
           <span className="font-semibold">Únete al equipo</span>
-          <span className="text-zinc-500"> — activa tu cuenta en Juxa Sign.</span>
+          <span className={juxaLoginHeroSpanMutedClass}> — activa tu cuenta en Juxa Sign.</span>
         </h1>
       }
       heroLead={
@@ -74,14 +77,15 @@ export function InvitacionAcceptClient({
           <p className={juxaLoginEyebrowClass}>Contraseña para tu usuario</p>
           <p className={cn(juxaLoginMutedClass, "mt-4")}>
             Correo asignado:{" "}
-            <span className="font-medium text-zinc-200" title={email}>
+            <span className="font-medium text-foreground dark:text-zinc-200" title={email}>
               {email}
             </span>
           </p>
           <p className={cn(juxaLoginMutedClass, "mt-2")}>
-            Organización: <span className="font-medium text-zinc-200">{organizationName}</span>
+            Organización: <span className="font-medium text-foreground dark:text-zinc-200">{organizationName}</span>
             {" · "}
-            Rol en el panel: <span className="font-medium text-zinc-200">{roleLabel}</span>
+            Rol en el panel:{" "}
+            <span className="font-medium text-foreground dark:text-zinc-200">{roleLabel}</span>
           </p>
         </div>
         <form action={formAction} className="mt-8 space-y-5">

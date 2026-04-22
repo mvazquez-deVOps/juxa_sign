@@ -40,16 +40,10 @@ export function AppLayoutClient({
     pathname.startsWith("/invitacion/") ||
     pathname === "/registro" ||
     pathname.startsWith("/registro/");
-  const juxaPublicBg =
-    pathname === "/login" ||
-    pathname.startsWith("/login/") ||
-    pathname.startsWith("/invitacion") ||
-    pathname === "/registro" ||
-    pathname.startsWith("/registro/");
   return (
     <Providers>
       {bare ? (
-        <div className={cn("min-h-screen", juxaPublicBg ? "bg-black" : "bg-background")}>{children}</div>
+        <div className={cn("min-h-screen bg-background text-foreground transition-colors")}>{children}</div>
       ) : (
         <AppShell
           pathname={pathname}

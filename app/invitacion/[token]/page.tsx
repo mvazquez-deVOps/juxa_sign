@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   juxaLoginCardClass,
+  juxaLoginHeroH1Class,
+  juxaLoginHeroSpanMutedClass,
   juxaLoginLinkClass,
   juxaLoginMutedClass,
 } from "@/components/auth-page-styles";
@@ -24,9 +26,9 @@ export default async function InvitacionPage({ params }: PageProps) {
     return (
       <JuxaLoginShell
         heroTitle={
-          <h1 className="text-2xl font-light leading-tight tracking-tight text-white sm:text-3xl">
+          <h1 className={juxaLoginHeroH1Class}>
             <span className="font-semibold">Enlace no disponible</span>
-            <span className="text-zinc-500"> — la invitación ya no es válida.</span>
+            <span className={juxaLoginHeroSpanMutedClass}> — la invitación ya no es válida.</span>
           </h1>
         }
         heroLead={<p>Pide a un administrador de tu organización un enlace nuevo.</p>}
@@ -48,9 +50,9 @@ export default async function InvitacionPage({ params }: PageProps) {
     return (
       <JuxaLoginShell
         heroTitle={
-          <h1 className="text-2xl font-light leading-tight tracking-tight text-white sm:text-3xl">
+          <h1 className={juxaLoginHeroH1Class}>
             <span className="font-semibold">Invitación expirada</span>
-            <span className="text-zinc-500"> — solicita un enlace actualizado.</span>
+            <span className={juxaLoginHeroSpanMutedClass}> — solicita un enlace actualizado.</span>
           </h1>
         }
         heroLead={<p>Las invitaciones caducan por seguridad; tu admin puede enviarte otra.</p>}

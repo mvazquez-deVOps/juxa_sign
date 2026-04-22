@@ -83,7 +83,9 @@ export function RegistroForm() {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       {message ? (
-        <p className="rounded-xl border border-amber-500/35 bg-amber-950/30 p-3 text-sm text-amber-100">{message}</p>
+        <p className="rounded-xl border border-amber-500/35 bg-amber-500/10 p-3 text-sm text-amber-950 dark:bg-amber-950/30 dark:text-amber-100">
+          {message}
+        </p>
       ) : null}
       <div className="space-y-2">
         <Label htmlFor="organizationName" className={juxaLoginLabelClass}>
@@ -168,9 +170,14 @@ export function RegistroForm() {
           className={cn("h-11 rounded-xl", juxaLoginInputClass)}
         />
       </div>
-      <p className={cn("rounded-lg border border-white/10 bg-white/5 p-3 text-xs", juxaLoginMutedClass)}>
-        <strong className="text-zinc-200">Incluye 1 folio de prueba gratis</strong> en tu cartera para un envío
-        estándar.
+      <p
+        className={cn(
+          "rounded-lg border border-border bg-muted/40 p-3 text-xs dark:border-white/10 dark:bg-white/5",
+          juxaLoginMutedClass,
+        )}
+      >
+        <strong className="text-foreground dark:text-zinc-200">Incluye 1 folio de prueba gratis</strong> en tu cartera
+        para un envío estándar.
       </p>
       <Button type="submit" className={juxaLoginPrimaryButtonClass} disabled={pending}>
         {pending ? "Creando cuenta…" : "Crear cuenta y entrar"}

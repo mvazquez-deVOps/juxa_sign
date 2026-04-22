@@ -9,7 +9,7 @@ import { Toaster } from "sonner";
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
         <NextTopLoader color="hsl(var(--primary))" height={3} showSpinner={false} />
         {children}
         <Toaster richColors position="top-center" closeButton />

@@ -29,8 +29,8 @@ export function JuxaBrand({
           <Signature className="h-6 w-6" />
         </div>
         <div className="space-y-1">
-          <p className="text-lg font-semibold tracking-tight text-white">Juxa Sign</p>
-          <p className="text-xs text-zinc-500">{sub}</p>
+          <p className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-white">Juxa Sign</p>
+          <p className="text-xs text-muted-foreground dark:text-zinc-500">{sub}</p>
         </div>
       </div>
     );
